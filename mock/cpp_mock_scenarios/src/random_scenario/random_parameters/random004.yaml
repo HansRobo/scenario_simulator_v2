@@ -3,7 +3,7 @@
     map_dir: "/workspace/Shiojiri_Lv4"
 
     respawn:
-      init_lane_id: 57107
+      init_lane_id: 57120
       goal_lane_id: 20976
 
     route_names:
@@ -12,13 +12,13 @@
 
     route:
       route1:
-        start_lane_id: 57107
+        start_lane_id: 57120
         route_ids: [20976]
         fix_start_pose: true
         fix_goal_pose: true
         init_start_lane: true
       route2:
-        route_ids: [86, 57107]
+        route_ids: [86, 57120]
         fix_start_pose: true
         fix_goal_pose: true
         init_start_lane: false
