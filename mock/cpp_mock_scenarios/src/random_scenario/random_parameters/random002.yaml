@@ -132,7 +132,7 @@
       - "moving_vehicle16"
       - "moving_vehicle17"
       - "moving_vehicle18"
-      - "moving_vehicle19"
+      # - "moving_vehicle19"
       - "moving_vehicle20"
       - "pedestrian0"
       - "pedestrian1"
@@ -320,10 +320,10 @@
         npc_type: "moving_vehicle"
         spawn_lane_id: 75
         goal_lane_id: 83
-      moving_vehicle19:
-        npc_type: "moving_vehicle"
-        spawn_lane_id: 75
-        goal_lane_id: 178573
+      # moving_vehicle19:
+      #   npc_type: "moving_vehicle"
+      #   spawn_lane_id: 75
+      #   goal_lane_id: 178573
       moving_vehicle20:
         npc_type: "moving_vehicle"
         spawn_lane_id: 1483

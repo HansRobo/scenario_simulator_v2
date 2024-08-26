@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    map_dir: "/workspace/bs_stable"
+    map_dir: "/workspace/b_mobility_stable"
 
     respawn:
       init_lane_id: 95
