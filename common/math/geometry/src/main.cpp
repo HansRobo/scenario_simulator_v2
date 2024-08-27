@@ -13,19 +13,40 @@
 // limitations under the License.
 
 #include <rclcpp/rclcpp.hpp>
-#include <geometry/quaternion/get_rotation_matrix.hpp>
+// #include <geometry/quaternion/get_rotation_matrix.hpp>
 #include <geometry/quaternion/operator.hpp>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
 
 struct quaternion
 {
     double x;
-    double spacer_1;
     double y;
-    double spacer_2;
     double z;
-    double spacer_3;
     double w;
 };
+
+namespace oreore
+{
+namespace geometry
+{
+auto getRotationMatrix(quaternion quat) -> Eigen::Matrix3d
+{
+  auto x = quat.x;
+  auto y = quat.y;
+  auto z = quat.z;
+  auto w = quat.w;
+  Eigen::Matrix3d ret(3, 3);
+  // clang-format off
+  ret << x * x - y * y - z * z + w * w,  2 * (x * y - z * w),            2 * (z * x + w * y),
+         2 * (x * y + z * w),           -x * x + y * y - z * z + w * w,  2 * (y * z - x * w), 
+         2 * (z * x - w * y),            2 * (y * z + w * x),           -x * x - y * y + z * z + w * w;
+  // clang-format on
+  return ret;
+}
+}  // namespace geometry
+}  // namespace math
 
 namespace main_geometry
 {
@@ -43,12 +64,9 @@ namespace main_geometry
             orientation.y = 0.0;
             orientation.z = 0.0;
             orientation.w = 1.0;
-            orientation.spacer_1 = 999999.999999;
-            orientation.spacer_2 = 999999.999999;
-            orientation.spacer_3 = 999999.999999;
 
             using math::geometry::operator*;
-            const Eigen::Vector3d relative_position =
+            const auto relative_position =
                 math::geometry::getRotationMatrix(orientation) * world_relative_position_;
 
             std::cout << relative_position(0) 
