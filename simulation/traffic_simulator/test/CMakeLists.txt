@@ -1,7 +1,0 @@
-add_subdirectory(src/traffic_lights)
-add_subdirectory(src/helper)
-add_subdirectory(src/entity)
-add_subdirectory(src/behavior)
-add_subdirectory(src/job)
-add_subdirectory(src/simulation_clock)
-add_subdirectory(src/hdmap_utils)

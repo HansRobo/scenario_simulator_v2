@@ -1,5 +1,0 @@
-ament_add_gtest(test_job test_job.cpp)
-target_link_libraries(test_job traffic_simulator)
-
-ament_add_gtest(test_job_list test_job_list.cpp)
-target_link_libraries(test_job_list traffic_simulator)

@@ -1,5 +1,0 @@
-string path
-float64 frame_rate
----
-bool has_succeeded
-string message

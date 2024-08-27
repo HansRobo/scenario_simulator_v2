@@ -21,6 +21,7 @@
 #include <geometry/quaternion/is_like_quaternion.hpp>
 
 #define EIGEN_MPL2_ONLY
+#define EIGEN_DONT_PARALLELIZE
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 

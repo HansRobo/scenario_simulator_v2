@@ -18,6 +18,7 @@
 #include <geometry/vector3/is_like_vector3.hpp>
 #include <geometry/vector3/norm.hpp>
 #include <scenario_simulator_exception/exception.hpp>
+#include <geometry/vector3/operator.hpp>
 
 namespace math
 {
