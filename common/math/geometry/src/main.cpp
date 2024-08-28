@@ -1,4 +1,3 @@
-// Copyright 2024 Hakoroboken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,11 +12,9 @@
 // limitations under the License.
 
 #include <rclcpp/rclcpp.hpp>
-// #include <geometry/quaternion/get_rotation_matrix.hpp>
+#include <geometry/quaternion/get_rotation_matrix.hpp>
 #include <geometry/quaternion/operator.hpp>
-#include <Eigen/Core>
-#include <Eigen/Geometry>
-
+#include <geometry/quaternion/is_like_quaternion.hpp>
 
 struct quaternion
 {
@@ -27,22 +24,28 @@ struct quaternion
     double w;
 };
 
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
 namespace oreore
 {
 namespace geometry
 {
-auto getRotationMatrix(quaternion quat) -> Eigen::Matrix3d
+template <typename T>
+Eigen::Matrix3d getRotationMatrix(T& quat)
 {
-  auto x = quat.x;
-  auto y = quat.y;
-  auto z = quat.z;
-  auto w = quat.w;
+  auto& x = quat.x;
+  auto& y = quat.y;
+  auto& z = quat.z;
+  auto& w = quat.w;
+  std::cout << x << std::endl;
+  std::cout << y << std::endl;
+  std::cout << z << std::endl;
+  std::cout << w << std::endl;
   Eigen::Matrix3d ret(3, 3);
-  // clang-format off
   ret << x * x - y * y - z * z + w * w,  2 * (x * y - z * w),            2 * (z * x + w * y),
          2 * (x * y + z * w),           -x * x + y * y - z * z + w * w,  2 * (y * z - x * w), 
          2 * (z * x - w * y),            2 * (y * z + w * x),           -x * x - y * y + z * z + w * w;
-  // clang-format on
   return ret;
 }
 }  // namespace geometry
@@ -65,9 +68,10 @@ namespace main_geometry
             orientation.z = 0.0;
             orientation.w = 1.0;
 
+
             using math::geometry::operator*;
             const auto relative_position =
-                math::geometry::getRotationMatrix(orientation) * world_relative_position_;
+                oreore::geometry::getRotationMatrix(orientation) * world_relative_position_;
 
             std::cout << relative_position(0) 
                 << ", " << relative_position(1)
