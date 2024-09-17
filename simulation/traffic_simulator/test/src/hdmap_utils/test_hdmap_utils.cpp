@@ -2613,3 +2613,14 @@ TEST_F(HdMapUtilsTest_CrossroadsWithStoplinesMap, getDistanceToStopLine_emptyVec
           makePoint(3807.63, 73715.99), makePoint(3785.76, 73707.70), makePoint(3773.19, 73723.27)})
       .has_value());
 }
+
+TEST_F(HdMapUtilsTest_WithRoadShoulderMap, routingWithRoadShoulder)
+{
+  const auto route = hdmap_utils.getRoute(34690, 34615, false);
+  EXPECT_EQ(route.size(), 5);
+  EXPECT_EQ(route[0], 34690);
+  EXPECT_EQ(route[1], 34693);
+  EXPECT_EQ(route[2], 34696);  // road shoulder
+  EXPECT_EQ(route[3], 34768);
+  EXPECT_EQ(route[4], 34615);
+}
