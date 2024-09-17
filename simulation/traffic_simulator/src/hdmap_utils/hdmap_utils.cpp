@@ -76,7 +76,7 @@ HdMapUtils::HdMapUtils(
   }
   overwriteLaneletsCenterline();
   traffic_rules_vehicle_ptr_ = lanelet::traffic_rules::TrafficRulesFactory::create(
-    lanelet::Locations::Germany, lanelet::Participants::Vehicle);
+    Locations::RoadShoulderPassableGermany, lanelet::Participants::Vehicle);
   vehicle_routing_graph_ptr_ =
     lanelet::routing::RoutingGraph::build(*lanelet_map_ptr_, *traffic_rules_vehicle_ptr_);
   traffic_rules_pedestrian_ptr_ = lanelet::traffic_rules::TrafficRulesFactory::create(
