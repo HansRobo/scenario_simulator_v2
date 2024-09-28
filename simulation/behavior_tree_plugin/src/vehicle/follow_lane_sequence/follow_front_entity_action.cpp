@@ -71,6 +71,7 @@ const traffic_simulator_msgs::msg::WaypointsArray FollowFrontEntityAction::calcu
 
 BT::NodeStatus FollowFrontEntityAction::tick()
 {
+  std::cout << "FollowFrontEntityAction" << std::endl;
   getBlackBoardValues();
   if (
     request != traffic_simulator::behavior::Request::NONE &&

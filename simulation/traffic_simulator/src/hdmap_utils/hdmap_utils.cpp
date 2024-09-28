@@ -1085,6 +1085,15 @@ auto HdMapUtils::getNextLaneletIds(
 {
   lanelet::Ids ids;
   const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
+//  // check road shoulder
+//  if(lanelet.attributeOr("subtype", "else") == std::string("road_shoulder")) {
+//    const auto & next_ = getNextRoadShoulderLanelet(lanelet_id)) {
+//      if (llt.attributeOr("subtype", "else") == "road_shoulder") {
+//        ids.push_back(llt.id());
+//      }
+//    }
+//    return ids;
+//  }
   for (const auto & llt : vehicle_routing_graph_ptr_->following(lanelet)) {
     if (llt.attributeOr("turn_direction", "else") == turn_direction) {
       ids.push_back(llt.id());
