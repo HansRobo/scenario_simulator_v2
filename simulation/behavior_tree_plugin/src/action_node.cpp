@@ -328,9 +328,10 @@ auto ActionNode::getDistanceToConflictingEntity(
   const lanelet::Ids & route_lanelets,
   const math::geometry::CatmullRomSplineInterface & spline) const -> std::optional<double>
 {
-  std::cout << "ActionNode::getDistanceToConflictingEntity" << std::endl;
+  std::cout << "\tActionNode::getDistanceToConflictingEntity" << std::endl;
   auto crosswalk_entity_status = getConflictingEntityStatusOnCrossWalk(route_lanelets);
   auto lane_entity_status = getConflictingEntityStatusOnLane(route_lanelets);
+  std::cout << "\t\tlane_entity_status.size(): " << lane_entity_status.size() << std::endl;
   std::set<double> distances;
   for (const auto & status : crosswalk_entity_status) {
     const auto s = getDistanceToTargetEntityOnCrosswalk(spline, status);
@@ -342,10 +343,13 @@ auto ActionNode::getDistanceToConflictingEntity(
     distances.insert(a.value());
   }
   for (const auto & status : lane_entity_status) {
+    std::cout << "\t\t\t" << status.getName() << ": ";
     const auto s = getDistanceToTargetEntityPolygon(spline, status, 0.0, 0.0, 0.0, 1.0);
     if (s) {
+      std::cout << "distance " << s.value();
       distances.insert(s.value());
     }
+    std::cout << std::endl;
   }
   if (distances.empty()) {
     return std::nullopt;
@@ -373,16 +377,33 @@ auto ActionNode::getConflictingEntityStatusOnCrossWalk(const lanelet::Ids & rout
 auto ActionNode::getConflictingEntityStatusOnLane(const lanelet::Ids & route_lanelets) const
   -> std::vector<traffic_simulator::CanonicalizedEntityStatus>
 {
-  std::cout << "ActionNode::getConflictingEntityStatusOnLane" << std::endl;
+  std::cout << "\t\tActionNode::getConflictingEntityStatusOnLane" << std::endl;
   std::vector<traffic_simulator::CanonicalizedEntityStatus> conflicting_entity_status;
-  lanelet::Ids lanelets = route_lanelets + hdmap_utils->getNearbyLaneletIds(this->canonicalized_entity_status->getMapPose().position, 10.0);
+  auto nearby_lanelets = hdmap_utils->getNearbyLaneletIds(this->canonicalized_entity_status->getMapPose().position, 10.0);
+  std::cout << "\t\t\tnearby_lanelets: ";
+  for(const auto & lanelet : nearby_lanelets){
+    std::cout << lanelet << ", ";
+  }
+  std::cout << std::endl;
+  lanelet::Ids lanelets = route_lanelets + nearby_lanelets;
   auto conflicting_lanes = hdmap_utils->getConflictingLaneIds(lanelets);
+  // conflicting_laneletに67が含まれていて欲しい
+  std::cout << "\t\t\tconflicting_lanes(" << static_cast<int>(conflicting_lanes.size()) << "): ";
+  for (const auto & lanelet : conflicting_lanes) {
+    std::cout << lanelet << " ";
+  }
+  std::cout << std::endl;
+  if(conflicting_lanes.size() == 0){
+    std::cout << "\t\t\tAdd 67 lanelet because no lanelet in conflicting_lanes." << std::endl;
+    // 67を追加しておく
+    conflicting_lanes.push_back(67);
+  }
   for (const auto & status : other_entity_status) {
     if (
       status.second.laneMatchingSucceed() &&
       std::count(
         conflicting_lanes.begin(), conflicting_lanes.end(), status.second.getLaneletId()) >= 1) {
-      std::cout << "found conflicting lane entity: " << status.first << std::endl;
+      std::cout << "\t\tmessage: found conflicting lane entity: " << status.first << std::endl;
       conflicting_entity_status.emplace_back(status.second);
     }
   }

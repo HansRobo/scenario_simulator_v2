@@ -71,44 +71,55 @@ const traffic_simulator_msgs::msg::WaypointsArray FollowFrontEntityAction::calcu
 
 BT::NodeStatus FollowFrontEntityAction::tick()
 {
-  std::cout << "FollowFrontEntityAction" << std::endl;
+  std::cout << "FollowFrontEntityAction: ";
   getBlackBoardValues();
   if (
     request != traffic_simulator::behavior::Request::NONE &&
     request != traffic_simulator::behavior::Request::FOLLOW_LANE) {
+    std::cout << "FAILURE due to unmatched request" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   if (getRightOfWayEntities(route_lanelets).size() != 0) {
+    std::cout << "FAILURE due to right of way entities" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   if (!behavior_parameter.see_around) {
+    std::cout << "FAILURE due to see_around" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   const auto waypoints = calculateWaypoints();
   if (waypoints.waypoints.empty()) {
+    std::cout << "FAILURE due to empty waypoints" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   if (trajectory == nullptr) {
+    std::cout << "FAILURE due to nullptr trajectory" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   auto distance_to_stopline = hdmap_utils->getDistanceToStopLine(route_lanelets, *trajectory);
   auto distance_to_conflicting_entity = getDistanceToConflictingEntity(route_lanelets, *trajectory);
   const auto front_entity_name = getFrontEntityName(*trajectory);
   if (!front_entity_name) {
+    std::cout << "FAILURE due to no front entity" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   distance_to_front_entity_ =
     getDistanceToTargetEntityPolygon(*trajectory, front_entity_name.value());
   if (!distance_to_front_entity_) {
+    std::cout << "FAILURE due to invalid distance to front entity" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   if (distance_to_conflicting_entity) {
+    std::cout << "distance_to_front_entity_: " << distance_to_front_entity_.value();
     if (distance_to_front_entity_.value() > distance_to_conflicting_entity.value()) {
+      std::cout << ", FAILURE due to conflicting entity" << std::endl;
       return BT::NodeStatus::FAILURE;
     }
   }
   if (distance_to_stopline) {
+    std::cout << ", distance_to_stopline: " << distance_to_stopline.value();
     if (distance_to_front_entity_.value() > distance_to_stopline.value()) {
+      std::cout << ", failure due to stopline" << std::endl;
       return BT::NodeStatus::FAILURE;
     }
   }
@@ -118,31 +129,47 @@ BT::NodeStatus FollowFrontEntityAction::tick()
   }
   const double front_entity_linear_velocity = front_entity_status.getTwist().linear.x;
   if (target_speed.value() <= front_entity_linear_velocity) {
-    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+//    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+    auto status = calculateUpdatedEntityStatus(target_speed.value());
+    status.action_status.current_action = "FollowFrontEntityAction";
+    setCanonicalizedEntityStatus(status);
     const auto obstacle = calculateObstacle(waypoints);
     setOutput("waypoints", waypoints);
     setOutput("obstacle", obstacle);
+    std::cout << ", RUNNING in " << __LINE__ << std::endl;
     return BT::NodeStatus::RUNNING;
   }
   if (
     distance_to_front_entity_.value() >=
     (calculateStopDistance(behavior_parameter.dynamic_constraints) +
      vehicle_parameters.bounding_box.dimensions.x + 5)) {
-    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(front_entity_linear_velocity + 2));
+//    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(front_entity_linear_velocity + 2));
+    auto status = calculateUpdatedEntityStatus(front_entity_linear_velocity + 2);
+    status.action_status.current_action = "FollowFrontEntityAction";
+    setCanonicalizedEntityStatus(status);
     setOutput("waypoints", waypoints);
     setOutput("obstacle", calculateObstacle(waypoints));
+    std::cout << ", RUNNING in " << __LINE__ << std::endl;
     return BT::NodeStatus::RUNNING;
   } else if (
     distance_to_front_entity_.value() <=
     calculateStopDistance(behavior_parameter.dynamic_constraints)) {
-    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(front_entity_linear_velocity - 2));
+//    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(front_entity_linear_velocity - 2));
+    auto status = calculateUpdatedEntityStatus(front_entity_linear_velocity - 2);
+    status.action_status.current_action = "FollowFrontEntityAction";
+    setCanonicalizedEntityStatus(status);
     setOutput("waypoints", waypoints);
     setOutput("obstacle", calculateObstacle(waypoints));
+    std::cout << ", RUNNING in " << __LINE__ << std::endl;
     return BT::NodeStatus::RUNNING;
   } else {
-    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(front_entity_linear_velocity));
+//    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(front_entity_linear_velocity));
+    auto status = calculateUpdatedEntityStatus(front_entity_linear_velocity);
+    status.action_status.current_action = "FollowFrontEntityAction";
+    setCanonicalizedEntityStatus(status);
     setOutput("waypoints", waypoints);
     setOutput("obstacle", calculateObstacle(waypoints));
+    std::cout << ", RUNNING in " << __LINE__ << std::endl;
     return BT::NodeStatus::RUNNING;
   }
 }

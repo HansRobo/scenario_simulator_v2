@@ -394,6 +394,16 @@ const visualization_msgs::msg::MarkerArray VisualizationComponent::generateMarke
     1000.;
   text_action.text += "\n" + std::to_string(speed) + "km/h";
 
+  if (obstacle_find) {
+    if(obstacle.type == obstacle.ENTITY){
+      text_action.text += "\nobstacle: ENTITY";
+    }else if(obstacle.type == obstacle.STOP_LINE){
+      text_action.text += "\nobstacle: STOP_LINE";
+    }else if(obstacle.type == obstacle.UNKNOWN){
+      text_action.text += "\nobstacle: UNKNOWN";
+    }
+  }
+
   text_action.color = color_names::makeColorMsg("white", 0.99);
   ret.markers.emplace_back(text_action);
 
@@ -439,6 +449,8 @@ const visualization_msgs::msg::MarkerArray VisualizationComponent::generateMarke
       obstacle_marker.scale.y = status.bounding_box.dimensions.y + 0.3;
       obstacle_marker.scale.z = status.bounding_box.dimensions.z;
       ret.markers.emplace_back(obstacle_marker);
+
+
     } else {
       visualization_msgs::msg::Marker obstacle_marker;
       obstacle_marker.action = obstacle_marker.DELETE;

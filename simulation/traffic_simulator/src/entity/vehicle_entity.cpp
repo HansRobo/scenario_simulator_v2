@@ -125,6 +125,7 @@ auto VehicleEntity::getWaypoints() -> const traffic_simulator_msgs::msg::Waypoin
 
 auto VehicleEntity::onUpdate(const double current_time, const double step_time) -> void
 {
+  std::cout << "===== VehicleEntity::onUpdate =====" << std::endl;
   EntityBase::onUpdate(current_time, step_time);
 
   behavior_plugin_ptr_->setOtherEntityStatus(other_status_);

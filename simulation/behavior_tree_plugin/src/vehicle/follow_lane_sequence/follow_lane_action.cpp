@@ -125,6 +125,8 @@ BT::NodeStatus FollowLaneAction::tick()
         return BT::NodeStatus::FAILURE;
       }
     }
+
+    // ここでひっかかって欲しい！！！！！！！！！！！！！！！！！！！！！！！！１
     if (distance_to_conflicting_entity) {
       std::cout << "distance_to_conflicting_entity: " << distance_to_conflicting_entity.value()
                 << std::endl;
@@ -143,7 +145,10 @@ BT::NodeStatus FollowLaneAction::tick()
   if (!target_speed) {
     target_speed = hdmap_utils->getSpeedLimit(route_lanelets);
   }
-  setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+//  setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+  auto status = calculateUpdatedEntityStatus(target_speed.value());
+  status.action_status.current_action = "FollowLaneAction";
+  setCanonicalizedEntityStatus(status);
   setOutput("waypoints", waypoints);
   setOutput("obstacle", calculateObstacle(waypoints));
   std::cout << "FollowLaneAction RUNNING(final) " << std::endl;

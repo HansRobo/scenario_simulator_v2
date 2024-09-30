@@ -403,6 +403,7 @@ auto HdMapUtils::getConflictingLaneIds(const lanelet::Ids & lanelet_ids) const -
   lanelet::Ids ids;
   for (const auto & lanelet_id : lanelet_ids) {
     const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
+    // ここでルーティンググラフを変更する必要あり？
     const auto conflicting_lanelets =
       lanelet::utils::getConflictingLanelets(vehicle_routing_graph_ptr_, lanelet);
     for (const auto & conflicting_lanelet : conflicting_lanelets) {
@@ -1649,7 +1650,8 @@ auto HdMapUtils::generateMarker() const -> visualization_msgs::msg::MarkerArray
 {
   visualization_msgs::msg::MarkerArray markers;
   lanelet::ConstLanelets all_lanelets = lanelet::utils::query::laneletLayer(lanelet_map_ptr_);
-  lanelet::ConstLanelets road_lanelets = lanelet::utils::query::roadLanelets(all_lanelets);
+  lanelet::ConstLanelets road_lanelets = lanelet::utils::query::roadLanelets(all_lanelets) + lanelet::utils::query::shoulderLanelets(all_lanelets);
+//  lanelet::ConstLanelets shoulder_lanelet = lanelet::utils::query::shoulderLanelets(all_lanelets);
   lanelet::ConstLanelets crosswalk_lanelets =
     lanelet::utils::query::crosswalkLanelets(all_lanelets);
   lanelet::ConstLanelets walkway_lanelets = lanelet::utils::query::walkwayLanelets(all_lanelets);
@@ -1665,6 +1667,7 @@ auto HdMapUtils::generateMarker() const -> visualization_msgs::msg::MarkerArray
 
   auto cl_ll_borders = color_utils::fromRgba(1.0, 1.0, 1.0, 0.999);
   auto cl_road = color_utils::fromRgba(0.2, 0.7, 0.7, 0.3);
+//  auto cl_road_shoulder = color_utils::fromRgba(0.2, 0.7, 0.7, 0.15);
   auto cl_cross = color_utils::fromRgba(0.2, 0.7, 0.2, 0.3);
   auto cl_stoplines = color_utils::fromRgba(1.0, 0.0, 0.0, 0.5);
   auto cl_trafficlights = color_utils::fromRgba(0.7, 0.7, 0.7, 0.8);
@@ -1676,6 +1679,10 @@ auto HdMapUtils::generateMarker() const -> visualization_msgs::msg::MarkerArray
   insertMarkerArray(
     markers,
     lanelet::visualization::laneletsBoundaryAsMarkerArray(road_lanelets, cl_ll_borders, true));
+//  insertMarkerArray(
+//      markers,
+//      lanelet::visualization::laneletsBoundaryAsMarkerArray(shoulder_lanelet, cl_ll_borders, true));
+
   insertMarkerArray(
     markers,
     lanelet::visualization::laneletsAsTriangleMarkerArray("road_lanelets", road_lanelets, cl_road));
@@ -1685,6 +1692,9 @@ auto HdMapUtils::generateMarker() const -> visualization_msgs::msg::MarkerArray
   insertMarkerArray(
     markers, lanelet::visualization::laneletsAsTriangleMarkerArray(
                "walkway_lanelets", walkway_lanelets, cl_cross));
+//  insertMarkerArray(
+//    markers,
+//    lanelet::visualization::laneletsAsTriangleMarkerArray("road_shoulder", shoulder_lanelet, cl_road_shoulder));
   insertMarkerArray(markers, lanelet::visualization::laneletDirectionAsMarkerArray(road_lanelets));
   insertMarkerArray(
     markers,
@@ -1700,6 +1710,8 @@ auto HdMapUtils::generateMarker() const -> visualization_msgs::msg::MarkerArray
     markers, lanelet::visualization::parkingSpacesAsMarkerArray(parking_spaces, cl_parking_spaces));
   insertMarkerArray(
     markers, lanelet::visualization::generateLaneletIdMarker(road_lanelets, cl_lanelet_id));
+//  insertMarkerArray(
+//    markers, lanelet::visualization::generateLaneletIdMarker(shoulder_lanelet, cl_lanelet_id));
   insertMarkerArray(
     markers, lanelet::visualization::generateLaneletIdMarker(crosswalk_lanelets, cl_lanelet_id));
   return markers;

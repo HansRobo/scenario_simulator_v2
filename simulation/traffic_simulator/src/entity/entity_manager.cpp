@@ -400,9 +400,13 @@ void EntityManager::update(const double current_time, const double step_time)
       status_with_trajectory.goal_pose.push_back(goal);
     }
     if (const auto obstacle = getObstacle(name); obstacle) {
+      std::cout << "EntityManager::update: Obstacle found!" << std::endl;
+      std::cout << "\ts: " << obstacle.value().s << std::endl;
+      std::cout << "\ttype: " << static_cast<int>(obstacle.value().type) << std::endl;
       status_with_trajectory.obstacle = obstacle.value();
       status_with_trajectory.obstacle_find = true;
     } else {
+      std::cout << "EntityManager::update: No obstacles" << std::endl;
       status_with_trajectory.obstacle_find = false;
     }
     status_with_trajectory.status = static_cast<EntityStatus>(status);
