@@ -46,6 +46,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <traffic_simulator/data_type/lane_change.hpp>
 #include <traffic_simulator/hdmap_utils/cache.hpp>
+#include <traffic_simulator/hdmap_utils/traffic_rules.hpp>
 #include <traffic_simulator_msgs/msg/bounding_box.hpp>
 #include <traffic_simulator_msgs/msg/entity_status.hpp>
 #include <tuple>
@@ -80,7 +81,8 @@ public:
 
   auto countLaneChanges(
     const traffic_simulator_msgs::msg::LaneletPose & from,
-    const traffic_simulator_msgs::msg::LaneletPose & to, bool allow_lane_change) const
+    const traffic_simulator_msgs::msg::LaneletPose & to,
+    const RoutingConfigurations & routing_config = RoutingConfigurations()) const
     -> std::optional<std::pair<int, int>>;
 
   auto filterLaneletIds(const lanelet::Ids &, const char subtype[]) const -> lanelet::Ids;
@@ -177,7 +179,8 @@ public:
 
   auto getLateralDistance(
     const traffic_simulator_msgs::msg::LaneletPose & from,
-    const traffic_simulator_msgs::msg::LaneletPose & to, bool allow_lane_change = false) const
+    const traffic_simulator_msgs::msg::LaneletPose & to,
+    const RoutingConfigurations & routing_config = RoutingConfigurations()) const
     -> std::optional<double>;
 
   auto getLeftBound(const lanelet::Id) const -> std::vector<geometry_msgs::msg::Point>;
@@ -188,7 +191,8 @@ public:
 
   auto getLongitudinalDistance(
     const traffic_simulator_msgs::msg::LaneletPose & from,
-    const traffic_simulator_msgs::msg::LaneletPose & to, bool allow_lane_change = false) const
+    const traffic_simulator_msgs::msg::LaneletPose & to,
+    const RoutingConfigurations & routing_config = RoutingConfigurations()) const
     -> std::optional<double>;
 
   auto getNearbyLaneletIds(
@@ -232,8 +236,9 @@ public:
 
   auto getRightOfWayLaneletIds(const lanelet::Id) const -> lanelet::Ids;
 
-  auto getRoute(const lanelet::Id from, const lanelet::Id to, bool allow_lane_change = false) const
-    -> lanelet::Ids;
+  auto getRoute(
+    const lanelet::Id from, const lanelet::Id to,
+    const RoutingConfigurations & routing_config = RoutingConfigurations()) const -> lanelet::Ids;
 
   auto getSpeedLimit(const lanelet::Ids &) const -> double;
 
