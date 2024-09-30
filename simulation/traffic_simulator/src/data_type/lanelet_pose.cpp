@@ -120,8 +120,11 @@ auto CanonicalizedLaneletPose::getAlternativeLaneletPoseBaseOnShortestRouteFrom(
     hdmap_utils->getRoute(from.lanelet_id, lanelet_poses_[0].lanelet_id);
   LaneletPose alternative_lanelet_pose = lanelet_poses_[0];
   for (const auto & laneletPose : lanelet_poses_) {
+    hdmap_utils::RoutingConfigurations routing_configurations;
+    routing_configurations.allow_lane_change = allow_lane_change;
+    routing_configurations.use_road_shoulder = false;
     const auto route =
-      hdmap_utils->getRoute(from.lanelet_id, laneletPose.lanelet_id, allow_lane_change);
+      hdmap_utils->getRoute(from.lanelet_id, laneletPose.lanelet_id, routing_configurations);
     if (shortest_route.size() > route.size()) {
       shortest_route = route;
       alternative_lanelet_pose = laneletPose;
