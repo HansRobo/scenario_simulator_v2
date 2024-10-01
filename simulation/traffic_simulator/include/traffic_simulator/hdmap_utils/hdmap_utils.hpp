@@ -334,6 +334,8 @@ private:
   lanelet::LaneletMapPtr lanelet_map_ptr_;
   lanelet::routing::RoutingGraphConstPtr vehicle_routing_graph_ptr_;
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_vehicle_ptr_;
+  lanelet::routing::RoutingGraphConstPtr vehicle_with_shoulder_routing_graph_ptr_;
+  lanelet::traffic_rules::TrafficRulesPtr traffic_rules_vehicle_with_shoulder_ptr_;
   lanelet::routing::RoutingGraphConstPtr pedestrian_routing_graph_ptr_;
   lanelet::traffic_rules::TrafficRulesPtr traffic_rules_pedestrian_ptr_;
   lanelet::ConstLanelets shoulder_lanelets_;

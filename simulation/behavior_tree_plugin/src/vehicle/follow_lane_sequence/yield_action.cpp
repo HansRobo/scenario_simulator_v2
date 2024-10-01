@@ -35,18 +35,23 @@ YieldAction::YieldAction(const std::string & name, const BT::NodeConfiguration &
 const std::optional<traffic_simulator_msgs::msg::Obstacle> YieldAction::calculateObstacle(
   const traffic_simulator_msgs::msg::WaypointsArray &)
 {
+  std::cout << "\tYieldAction::calculateObstacle: ";
   if (!distance_to_stop_target_) {
+    std::cout << "FAILURE: no distance_to_stop_target" << std::endl;
     return std::nullopt;
   }
   if (distance_to_stop_target_.value() < 0) {
+    std::cout << "FAILURE: distance_to_stop_target < 0" << std::endl;
     return std::nullopt;
   }
   if (distance_to_stop_target_.value() > trajectory->getLength()) {
+    std::cout << "FAILURE: distance_to_stop_target > trajectory->getLength()" << std::endl;
     return std::nullopt;
   }
   traffic_simulator_msgs::msg::Obstacle obstacle;
   obstacle.type = obstacle.ENTITY;
   obstacle.s = distance_to_stop_target_.value();
+  std::cout << "SUCCESS distance: " << obstacle.s  << std::endl;
   return obstacle;
 }
 
@@ -87,16 +92,20 @@ std::optional<double> YieldAction::calculateTargetSpeed()
 
 BT::NodeStatus YieldAction::tick()
 {
+  std::cout << "YieldAction::tick" << std::endl;
   getBlackBoardValues();
   if (
     request != traffic_simulator::behavior::Request::NONE &&
     request != traffic_simulator::behavior::Request::FOLLOW_LANE) {
+    std::cout << "\tFAILURE: invalid request" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   if (!behavior_parameter.see_around) {
+    std::cout << "\tFAILURE: see_around is false" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   if (!canonicalized_entity_status->laneMatchingSucceed()) {
+    std::cout << "\tFAILURE: lane matching failed" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   const auto right_of_way_entities = getRightOfWayEntities(route_lanelets);
@@ -104,29 +113,41 @@ BT::NodeStatus YieldAction::tick()
     if (!target_speed) {
       target_speed = hdmap_utils->getSpeedLimit(route_lanelets);
     }
-    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+    distance_to_stop_target_ = getYieldStopDistance(route_lanelets, *trajectory);
+
+//    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+    auto status = calculateUpdatedEntityStatus(target_speed.value());
+    status.action_status.current_action = "YieldAction";
+    setCanonicalizedEntityStatus(status);
     const auto waypoints = calculateWaypoints();
     if (waypoints.waypoints.empty()) {
+      std::cout << "\tFAILURE: no waypoints" << std::endl;
       return BT::NodeStatus::FAILURE;
     }
     const auto obstacle = calculateObstacle(waypoints);
     setOutput("waypoints", waypoints);
     setOutput("obstacle", obstacle);
+    std::cout << "\tSUCCESS: in line " << __LINE__ << std::endl;
     return BT::NodeStatus::SUCCESS;
   }
-  distance_to_stop_target_ = getYieldStopDistance(route_lanelets);
+
   target_speed = calculateTargetSpeed();
   if (!target_speed) {
     target_speed = hdmap_utils->getSpeedLimit(route_lanelets);
   }
-  setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+//  setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+  auto status = calculateUpdatedEntityStatus(target_speed.value());
+  status.action_status.current_action = "YieldAction";
+  setCanonicalizedEntityStatus(status);
   const auto waypoints = calculateWaypoints();
   if (waypoints.waypoints.empty()) {
+    std::cout << "\tFAILURE: no waypoints" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   const auto obstacle = calculateObstacle(waypoints);
   setOutput("waypoints", waypoints);
   setOutput("obstacle", obstacle);
+  std::cout << "\tRUNNING: in line " << __LINE__ << std::endl;
   return BT::NodeStatus::RUNNING;
 }
 }  // namespace follow_lane_sequence

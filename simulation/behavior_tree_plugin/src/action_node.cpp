@@ -115,10 +115,25 @@ auto ActionNode::getOtherEntityStatus(lanelet::Id lanelet_id) const
   return ret;
 }
 
-auto ActionNode::getYieldStopDistance(const lanelet::Ids & following_lanelets) const
+auto ActionNode::getYieldStopDistance(const lanelet::Ids & following_lanelets, const math::geometry::CatmullRomSplineInterface & spline) const
   -> std::optional<double>
 {
-  std::set<double> distances;
+  std::cout << "\t\tActionNode::getYieldStopDistance" << std::endl;
+  std::set<double> conflict_distances;
+  auto lane_entity_status = getConflictingEntityStatusOnLane(route_lanelets);
+  std::cout << "\t\t\tconflicting entities(" << lane_entity_status.size() << "): ";
+  for (const auto & status : lane_entity_status) {
+    std::cout << "\t\t\t\t" << status.getName() << ": ";
+    const auto s = getDistanceToTargetEntityPolygon(spline, status, 0.0, 0.0, 0.0, 1.0);
+    if (s) {
+      std::cout << "distance " << s.value();
+      conflict_distances.insert(s.value());
+    }
+    std::cout << std::endl;
+  }
+
+
+  std::set<double> right_of_way_distances;
   for (const auto & lanelet : following_lanelets) {
     const auto right_of_way_ids = hdmap_utils->getRightOfWayLaneletIds(lanelet);
     for (const auto right_of_way_id : right_of_way_ids) {
@@ -130,14 +145,14 @@ auto ActionNode::getYieldStopDistance(const lanelet::Ids & following_lanelets) c
         const auto distance_backward = hdmap_utils->getLongitudinalDistance(
           traffic_simulator::helper::constructLaneletPose(lanelet, 0), lanelet_pose);
         if (distance_forward) {
-          distances.insert(distance_forward.value());
+          right_of_way_distances.insert(distance_forward.value());
         } else if (distance_backward) {
-          distances.insert(-distance_backward.value());
+          right_of_way_distances.insert(-distance_backward.value());
         }
       }
     }
-    if (distances.size() != 0) {
-      return *distances.begin();
+    if (right_of_way_distances.size() != 0) {
+      return *right_of_way_distances.begin();
     }
   }
   return std::nullopt;
@@ -393,11 +408,11 @@ auto ActionNode::getConflictingEntityStatusOnLane(const lanelet::Ids & route_lan
     std::cout << lanelet << " ";
   }
   std::cout << std::endl;
-  if(conflicting_lanes.size() == 0){
-    std::cout << "\t\t\tAdd 67 lanelet because no lanelet in conflicting_lanes." << std::endl;
-    // 67を追加しておく
-    conflicting_lanes.push_back(67);
-  }
+//  if(conflicting_lanes.size() == 0){
+//    std::cout << "\t\t\tAdd 67 lanelet because no lanelet in conflicting_lanes." << std::endl;
+//    // 67を追加しておく
+//    conflicting_lanes.push_back(67);
+//  }
   for (const auto & status : other_entity_status) {
     if (
       status.second.laneMatchingSucceed() &&

@@ -126,7 +126,7 @@ BT::NodeStatus FollowLaneAction::tick()
       }
     }
 
-    // ここでひっかかって欲しい！！！！！！！！！！！！！！！！！！！！！！！！１
+    // ここでひっかかって欲しい！！！！！！！！！！！！！！！！！！！！！！！！
     if (distance_to_conflicting_entity) {
       std::cout << "distance_to_conflicting_entity: " << distance_to_conflicting_entity.value()
                 << std::endl;
