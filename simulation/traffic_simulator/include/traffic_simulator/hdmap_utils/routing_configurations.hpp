@@ -22,37 +22,48 @@ struct RoutingConfigurations
 {
   bool allow_lane_change = false;
   bool use_road_shoulder = false;
+  enum class RoutingGraphType : std::uint8_t { VEHICLE, VEHICLE_SHOULDER, PEDESTRIAN };
+  RoutingGraphType routing_graph_type = RoutingGraphType::VEHICLE;
 
   bool operator==(const RoutingConfigurations & routing_configuration) const
   {
     return allow_lane_change == routing_configuration.allow_lane_change &&
-           use_road_shoulder == routing_configuration.use_road_shoulder;
+           use_road_shoulder == routing_configuration.use_road_shoulder &&
+           routing_graph_type == routing_configuration.routing_graph_type;
   }
-
-  struct HashFunction
-  {
-    size_t operator()(const RoutingConfigurations & c) const
-    {
-      return (std::hash<bool>()(c.allow_lane_change) << 1) ^ std::hash<bool>()(c.use_road_shoulder);
-    }
-  };
 
   friend std::ostream & operator<<(std::ostream & os, const RoutingConfigurations & rc)
   {
     os << "{allow_lane_change: " << (rc.allow_lane_change ? "true" : "false")
-       << ", use_road_shoulder: " << (rc.use_road_shoulder ? "true" : "false") << "}";
+       << ", use_road_shoulder: " << (rc.use_road_shoulder ? "true" : "false")
+       << ", routing_graph_type: ";
+
+    os << [](const RoutingGraphType & type) {
+#define CASE(type) case RoutingConfigurations::RoutingGraphType::type: return #type;
+      switch (type) {
+        CASE(VEHICLE)
+        CASE(PEDESTRIAN)
+        default: return "UNKNOWN";
+      }
+#undef CASE
+    }(rc.routing_graph_type);
+
+    os << "}";
     return os;
   }
 };
 }  // namespace hdmap_utils
 
-namespace std
-{
-template <>
-struct hash<hdmap_utils::RoutingConfigurations>
-: public hdmap_utils::RoutingConfigurations::HashFunction
-{
-};
+namespace std {
+  template <>
+  struct hash<hdmap_utils::RoutingConfigurations> {
+    std::size_t operator()(const hdmap_utils::RoutingConfigurations& config) const {
+      auto h1 = std::hash<bool>{}(config.allow_lane_change);
+      auto h2 = std::hash<bool>{}(config.use_road_shoulder);
+      auto h3 = std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(config.routing_graph_type));
+      return h1 ^ (h2 << 1) ^ (h3 << 2);
+    }
+  };
 }  // namespace std
 
 #endif  // TRAFFIC_SIMULATOR__HDMAP_UTILS__ROUTING_CONFIGURATIONS_HPP_

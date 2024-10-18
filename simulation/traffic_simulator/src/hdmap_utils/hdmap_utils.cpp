@@ -65,6 +65,8 @@ HdMapUtils::HdMapUtils(
 
   lanelet_map_ptr_ = lanelet::load(lanelet2_map_path.string(), projector, &errors);
 
+  routing_graphs_ = std::make_unique<RoutingGraphs>(lanelet_map_ptr_);
+
   if (not errors.empty()) {
     std::stringstream ss;
     const auto * separator = "";
@@ -75,17 +77,9 @@ HdMapUtils::HdMapUtils(
     THROW_SIMULATION_ERROR("Failed to load lanelet map (", ss.str(), ")");
   }
   overwriteLaneletsCenterline();
-  traffic_rules_vehicle_ptr_ = lanelet::traffic_rules::TrafficRulesFactory::create(
-    Locations::RoadShoulderPassableGermany, lanelet::Participants::Vehicle);
-  vehicle_routing_graph_ptr_ =
-    lanelet::routing::RoutingGraph::build(*lanelet_map_ptr_, *traffic_rules_vehicle_ptr_);
-  traffic_rules_pedestrian_ptr_ = lanelet::traffic_rules::TrafficRulesFactory::create(
-    lanelet::Locations::Germany, lanelet::Participants::Pedestrian);
-  pedestrian_routing_graph_ptr_ =
-    lanelet::routing::RoutingGraph::build(*lanelet_map_ptr_, *traffic_rules_pedestrian_ptr_);
   std::vector<lanelet::routing::RoutingGraphConstPtr> all_graphs;
-  all_graphs.push_back(vehicle_routing_graph_ptr_);
-  all_graphs.push_back(pedestrian_routing_graph_ptr_);
+  all_graphs.push_back(routing_graphs_->get(RoutingGraphs::Type::VEHICLE));
+  all_graphs.push_back(routing_graphs_->get(RoutingGraphs::Type::PEDESTRIAN));
   shoulder_lanelets_ =
     lanelet::utils::query::shoulderLanelets(lanelet::utils::query::laneletLayer(lanelet_map_ptr_));
 }
