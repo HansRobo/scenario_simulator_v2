@@ -185,9 +185,9 @@ public:
 
   auto getLeftBound(const lanelet::Id) const -> std::vector<geometry_msgs::msg::Point>;
 
-  auto getLeftLaneletIds(
-    const lanelet::Id, const traffic_simulator_msgs::msg::EntityType &,
-    const bool include_opposite_direction = true) const -> lanelet::Ids;
+  template <int ROUTING_OPTION>
+  auto getLeftLaneletIds(const lanelet::Id, const bool include_opposite_direction = true) const
+    -> lanelet::Ids;
 
   auto getLongitudinalDistance(
     const traffic_simulator_msgs::msg::LaneletPose & from,
@@ -203,33 +203,42 @@ public:
     const geometry_msgs::msg::Point &, const double distance_threshold,
     const std::size_t search_count = 5) const -> lanelet::Ids;
 
+  template <int ROUTING_OPTION = 0>
   auto getNextLaneletIds(const lanelet::Ids &) const -> lanelet::Ids;
 
+  template <int ROUTING_OPTION = 0>
   auto getNextLaneletIds(const lanelet::Ids &, const std::string & turn_direction) const
     -> lanelet::Ids;
 
+  template <int ROUTING_OPTION = 0>
   auto getNextLaneletIds(const lanelet::Id) const -> lanelet::Ids;
 
+  template <int ROUTING_OPTION = 0>
   auto getNextLaneletIds(const lanelet::Id, const std::string & turn_direction) const
     -> lanelet::Ids;
 
+  template <int ROUTING_OPTION = 0>
   auto getPreviousLaneletIds(const lanelet::Ids &) const -> lanelet::Ids;
 
+  template <int ROUTING_OPTION = 0>
   auto getPreviousLaneletIds(const lanelet::Ids &, const std::string & turn_direction) const
     -> lanelet::Ids;
 
+  template <int ROUTING_OPTION = 0>
   auto getPreviousLaneletIds(const lanelet::Id) const -> lanelet::Ids;
 
+  template <int ROUTING_OPTION = 0>
   auto getPreviousLaneletIds(const lanelet::Id, const std::string & turn_direction) const
     -> lanelet::Ids;
 
+  template <int ROUTING_OPTION = 0>
   auto getPreviousLanelets(const lanelet::Id, const double distance = 100) const -> lanelet::Ids;
 
   auto getRightBound(const lanelet::Id) const -> std::vector<geometry_msgs::msg::Point>;
 
-  auto getRightLaneletIds(
-    lanelet::Id, traffic_simulator_msgs::msg::EntityType,
-    bool include_opposite_direction = true) const -> lanelet::Ids;
+  template <int ROUTING_OPTION = 0>
+  auto getRightLaneletIds(lanelet::Id, bool include_opposite_direction = true) const
+    -> lanelet::Ids;
 
   auto getRightOfWayLaneletIds(const lanelet::Ids &) const
     -> std::unordered_map<lanelet::Id, lanelet::Ids>;
@@ -279,35 +288,42 @@ public:
 
   auto isTrafficLightRegulatoryElement(const lanelet::Id) const -> bool;
 
+  template <int ROUTING_OPTION = 0>
   auto matchToLane(
     const geometry_msgs::msg::Pose &, const traffic_simulator_msgs::msg::BoundingBox &,
     const bool include_crosswalk, const double matching_distance = 1.0,
     const double reduction_ratio = 0.8) const -> std::optional<lanelet::Id>;
 
+  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const bool include_crosswalk,
     const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
+  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const lanelet::Ids &,
     const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
+  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Point &, const traffic_simulator_msgs::msg::BoundingBox &,
     const bool include_crosswalk, const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
+  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const traffic_simulator_msgs::msg::BoundingBox &,
     const bool include_crosswalk, const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
+  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const lanelet::Id, const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
+  template <int ROUTING_OPTION = 0>
   auto toLaneletPoses(
     const geometry_msgs::msg::Pose &, const lanelet::Id, const double matching_distance = 5.0,
     const bool include_opposite_direction = true) const
@@ -318,6 +334,7 @@ public:
   auto toMapPoints(const lanelet::Id, const std::vector<double> & s) const
     -> std::vector<geometry_msgs::msg::Point>;
 
+  template <int ROUTING_OPTION = 0>
   auto toMapPose(const traffic_simulator_msgs::msg::LaneletPose &, const bool fill_pitch = true)
     const -> geometry_msgs::msg::PoseStamped;
 
@@ -326,17 +343,83 @@ private:
    *  Declared mutable for caching
    */
   // @{
-  mutable RouteCache route_cache_;
   mutable CenterPointsCache center_points_cache_;
   mutable LaneletLengthCache lanelet_length_cache_;
   // @}
 
   lanelet::LaneletMapPtr lanelet_map_ptr_;
-  lanelet::routing::RoutingGraphConstPtr vehicle_routing_graph_ptr_;
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules_vehicle_ptr_;
-  lanelet::routing::RoutingGraphConstPtr pedestrian_routing_graph_ptr_;
-  lanelet::traffic_rules::TrafficRulesPtr traffic_rules_pedestrian_ptr_;
   lanelet::ConstLanelets shoulder_lanelets_;
+
+  class RoutingGraphs
+  {
+  public:
+    explicit RoutingGraphs(const lanelet::LaneletMapPtr & lanelet_map)
+    {
+      vehicle.rules = lanelet::traffic_rules::TrafficRulesFactory::create(
+        Locations::RoadShoulderPassableGermany, lanelet::Participants::Vehicle);
+      vehicle.graph = lanelet::routing::RoutingGraph::build(*lanelet_map, *vehicle.rules);
+      pedestrian.rules = lanelet::traffic_rules::TrafficRulesFactory::create(
+        lanelet::Locations::Germany, lanelet::Participants::Pedestrian);
+      pedestrian.graph = lanelet::routing::RoutingGraph::build(*lanelet_map, *pedestrian.rules);
+    }
+    struct RuleWithGraph
+    {
+      lanelet::traffic_rules::TrafficRulesPtr rules;
+      lanelet::routing::RoutingGraphPtr graph;
+      RouteCache route_cache;
+    };
+
+    [[nodiscard]] lanelet::routing::RoutingGraphPtr get(
+      const RoutingConfigurations::RoutingGraphType type) const
+    {
+      switch (type) {
+        case RoutingConfigurations::RoutingGraphType::VEHICLE:
+          return vehicle.graph;
+        case RoutingConfigurations::RoutingGraphType::VEHICLE_SHOULDER:
+          return vehicle_with_shoulder.graph;
+        case RoutingConfigurations::RoutingGraphType::PEDESTRIAN:
+          return pedestrian.graph;
+        default:
+          throw std::runtime_error("Invalid routing graph type");
+      }
+    }
+
+    [[nodiscard]] lanelet::traffic_rules::TrafficRulesPtr getRules(
+      const RoutingConfigurations::RoutingGraphType type) const
+    {
+      switch (type) {
+        case RoutingConfigurations::RoutingGraphType::VEHICLE:
+          return vehicle.rules;
+        case RoutingConfigurations::RoutingGraphType::VEHICLE_SHOULDER:
+          return vehicle_with_shoulder.rules;
+        case RoutingConfigurations::RoutingGraphType::PEDESTRIAN:
+          return pedestrian.rules;
+        default:
+          throw std::runtime_error("Invalid routing graph type");
+      }
+    }
+
+    [[nodiscard]] RouteCache & getRouteCache(const RoutingConfigurations::RoutingGraphType type)
+    {
+      switch (type) {
+        case RoutingConfigurations::RoutingGraphType::VEHICLE:
+          return vehicle.route_cache;
+        case RoutingConfigurations::RoutingGraphType::VEHICLE_SHOULDER:
+          return vehicle_with_shoulder.route_cache;
+        case RoutingConfigurations::RoutingGraphType::PEDESTRIAN:
+          return pedestrian.route_cache;
+        default:
+          throw std::runtime_error("Invalid routing graph type");
+      }
+    }
+
+  private:
+    RuleWithGraph vehicle;
+    RuleWithGraph vehicle_with_shoulder;
+    RuleWithGraph pedestrian;
+  };
+
+  std::unique_ptr<RoutingGraphs> routing_graphs_;
 
   template <typename Lanelet>
   auto getLaneletIds(const std::vector<Lanelet> & lanelets) const -> lanelet::Ids
