@@ -26,16 +26,16 @@ enum class RoutingGraphType : std::uint8_t { VEHICLE, VEHICLE_SHOULDER, PEDESTRI
 inline std::ostream & operator<<(std::ostream & os, const RoutingGraphType & type)
 {
   os << [](const traffic_simulator::RoutingGraphType & type) {
-#define CASE(type)                                \
+#define ROUTING_GRAPH_TYPE_CASE(type)                                \
   case traffic_simulator::RoutingGraphType::type: \
     return #type;
     switch (type) {
-      CASE(VEHICLE)
-      CASE(PEDESTRIAN)
+      ROUTING_GRAPH_TYPE_CASE(VEHICLE)
+      ROUTING_GRAPH_TYPE_CASE(PEDESTRIAN)
       default:
         return "UNKNOWN";
     }
-#undef CASE
+#undef ROUTING_GRAPH_TYPE_CASE
   }(type);
   return os;
 }
