@@ -89,6 +89,7 @@ void LaneChangeAction::getBlackBoardValues()
 
 BT::NodeStatus LaneChangeAction::tick()
 {
+  std::cout << "LaneChangeAction" << std::endl;
   getBlackBoardValues();
   if (request != traffic_simulator::behavior::Request::LANE_CHANGE) {
     curve_ = std::nullopt;
@@ -233,6 +234,7 @@ BT::NodeStatus LaneChangeAction::tick()
       const auto obstacle = calculateObstacle(waypoints);
       setOutput("waypoints", waypoints);
       setOutput("obstacle", obstacle);
+      std::cout << "LaneChangeAction running" << std::endl;
       return BT::NodeStatus::RUNNING;
     } else {
       const auto waypoints = calculateWaypoints();
@@ -257,6 +259,7 @@ BT::NodeStatus LaneChangeAction::tick()
       entity_status_updated.pose = hdmap_utils->toMapPose(lanelet_pose).pose;
       entity_status_updated.action_status = canonicalized_entity_status->getActionStatus();
       setCanonicalizedEntityStatus(entity_status_updated);
+      std::cout << "LaneChangeAction success" << std::endl;
       return BT::NodeStatus::SUCCESS;
     }
   }

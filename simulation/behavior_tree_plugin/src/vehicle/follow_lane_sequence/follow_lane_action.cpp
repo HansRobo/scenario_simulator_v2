@@ -68,25 +68,31 @@ void FollowLaneAction::getBlackBoardValues()
 
 BT::NodeStatus FollowLaneAction::tick()
 {
+  std::cout << "FollowLaneAction::tick" << std::endl;
   getBlackBoardValues();
   if (
     request != traffic_simulator::behavior::Request::NONE &&
     request != traffic_simulator::behavior::Request::FOLLOW_LANE) {
+    std::cout << "FollowLaneAction FAILURE due to unmatched request" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   if (!canonicalized_entity_status->laneMatchingSucceed()) {
     stopEntity();
+    std::cout << "FollowLaneAction RUNNING due to failed lane matching" << std::endl;
     return BT::NodeStatus::RUNNING;
   }
   const auto waypoints = calculateWaypoints();
   if (waypoints.waypoints.empty()) {
+    std::cout << "FollowLaneAction FAILURE due to empty waypoints" << std::endl;
     return BT::NodeStatus::FAILURE;
   }
   if (behavior_parameter.see_around) {
     if (getRightOfWayEntities(route_lanelets).size() != 0) {
+      std::cout << "FollowLaneAction FAILURE due to right of way entities" << std::endl;
       return BT::NodeStatus::FAILURE;
     }
     if (trajectory == nullptr) {
+      std::cout << "FollowLaneAction FAILURE due to nullptr trajectory" << std::endl;
       return BT::NodeStatus::FAILURE;
     }
     auto distance_to_front_entity = getDistanceToFrontEntity(*trajectory);
@@ -95,6 +101,7 @@ BT::NodeStatus FollowLaneAction::tick()
         distance_to_front_entity.value() <=
         calculateStopDistance(behavior_parameter.dynamic_constraints) +
           vehicle_parameters.bounding_box.dimensions.x + 5) {
+        std::cout << "FollowLaneAction FAILURE due to distance to front entity" << std::endl;
         return BT::NodeStatus::FAILURE;
       }
     }
@@ -102,6 +109,7 @@ BT::NodeStatus FollowLaneAction::tick()
       getDistanceToTrafficLightStopLine(route_lanelets, *trajectory);
     if (distance_to_traffic_stop_line) {
       if (distance_to_traffic_stop_line.value() <= getHorizon()) {
+        std::cout << "FollowLaneAction FAILURE due to distance to traffic stop line" << std::endl;
         return BT::NodeStatus::FAILURE;
       }
     }
@@ -113,14 +121,23 @@ BT::NodeStatus FollowLaneAction::tick()
         distance_to_stopline.value() <=
         calculateStopDistance(behavior_parameter.dynamic_constraints) +
           vehicle_parameters.bounding_box.dimensions.x * 0.5 + 5) {
+        std::cout << "FollowLaneAction FAILURE due to distance to stop line" << std::endl;
         return BT::NodeStatus::FAILURE;
       }
     }
+
+    // ここでひっかかって欲しい！！！！！！！！！！！！！！！！！！！！！！！！
     if (distance_to_conflicting_entity) {
+      std::cout << "distance_to_conflicting_entity: " << distance_to_conflicting_entity.value()
+                << std::endl;
+      auto threshold = (vehicle_parameters.bounding_box.dimensions.x + 3 +
+                        calculateStopDistance(behavior_parameter.dynamic_constraints));
+      std::cout << "threshold: " << threshold << std::endl;
       if (
         distance_to_conflicting_entity.value() <
         (vehicle_parameters.bounding_box.dimensions.x + 3 +
          calculateStopDistance(behavior_parameter.dynamic_constraints))) {
+        std::cout << "FollowLaneAction FAILURE due to distance to conflicting entity" << std::endl;
         return BT::NodeStatus::FAILURE;
       }
     }
@@ -128,9 +145,13 @@ BT::NodeStatus FollowLaneAction::tick()
   if (!target_speed) {
     target_speed = hdmap_utils->getSpeedLimit(route_lanelets);
   }
-  setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+//  setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+  auto status = calculateUpdatedEntityStatus(target_speed.value());
+  status.action_status.current_action = "FollowLaneAction";
+  setCanonicalizedEntityStatus(status);
   setOutput("waypoints", waypoints);
   setOutput("obstacle", calculateObstacle(waypoints));
+  std::cout << "FollowLaneAction RUNNING(final) " << std::endl;
   return BT::NodeStatus::RUNNING;
 }
 }  // namespace follow_lane_sequence

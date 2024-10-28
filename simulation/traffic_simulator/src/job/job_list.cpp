@@ -36,6 +36,9 @@ void JobList::update(const double step_time, const job::Event event)
   for (auto & job : list_) {
     if (job.event == event) {
       job.onUpdate(step_time);
+      if(event == job::Event::POST_UPDATE){
+        std::cout << "JobList::update(POST): " << static_cast<int>(job.type) << std::endl;
+      }
     }
   }
 }

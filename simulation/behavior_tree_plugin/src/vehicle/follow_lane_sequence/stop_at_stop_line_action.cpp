@@ -146,7 +146,10 @@ BT::NodeStatus StopAtStopLineAction::tick()
       setOutput("obstacle", calculateObstacle(waypoints));
       return BT::NodeStatus::SUCCESS;
     }
-    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+//    setCanonicalizedEntityStatus(calculateUpdatedEntityStatus(target_speed.value()));
+    auto status = calculateUpdatedEntityStatus(target_speed.value());
+    status.action_status.current_action = "StopAtStopLine";
+    setCanonicalizedEntityStatus(status);
     setOutput("waypoints", waypoints);
     setOutput("obstacle", calculateObstacle(waypoints));
     return BT::NodeStatus::RUNNING;

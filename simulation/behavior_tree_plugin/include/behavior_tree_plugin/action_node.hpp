@@ -61,7 +61,7 @@ public:
   auto getRightOfWayEntities() const -> std::vector<traffic_simulator::CanonicalizedEntityStatus>;
   auto getRightOfWayEntities(const lanelet::Ids & following_lanelets) const
     -> std::vector<traffic_simulator::CanonicalizedEntityStatus>;
-  auto getYieldStopDistance(const lanelet::Ids & following_lanelets) const -> std::optional<double>;
+  auto getYieldStopDistance(const lanelet::Ids & following_lanelets, const math::geometry::CatmullRomSplineInterface & spline) const -> std::optional<double>;
   auto getOtherEntityStatus(lanelet::Id lanelet_id) const
     -> std::vector<traffic_simulator::CanonicalizedEntityStatus>;
   auto stopEntity() const -> void;
