@@ -70,13 +70,13 @@ public:
     -> std::tuple<
       std::optional<traffic_simulator_msgs::msg::LaneletPose>, std::optional<lanelet::Id>>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto canonicalizeLaneletPose(
     const traffic_simulator_msgs::msg::LaneletPose &, const lanelet::Ids & route_lanelets) const
     -> std::tuple<
       std::optional<traffic_simulator_msgs::msg::LaneletPose>, std::optional<lanelet::Id>>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto clipTrajectoryFromLaneletIds(
     const lanelet::Id, const double s, const lanelet::Ids &,
     const double forward_distance = 20) const -> std::vector<geometry_msgs::msg::Point>;
@@ -91,11 +91,11 @@ public:
 
   auto generateMarker() const -> visualization_msgs::msg::MarkerArray;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getAllCanonicalizedLaneletPoses(const traffic_simulator_msgs::msg::LaneletPose &) const
     -> std::vector<traffic_simulator_msgs::msg::LaneletPose>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getAlongLaneletPose(
     const traffic_simulator_msgs::msg::LaneletPose & from, const double along) const
     -> traffic_simulator_msgs::msg::LaneletPose;
@@ -115,10 +115,10 @@ public:
     const lanelet::Id lanelet_id, const lanelet::Id crossing_lanelet_id) const
     -> std::optional<double>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getConflictingCrosswalkIds(const lanelet::Ids &) const -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getConflictingLaneIds(const lanelet::Ids &) const -> lanelet::Ids;
 
   auto getDistanceToStopLine(
@@ -145,20 +145,20 @@ public:
     const std::vector<geometry_msgs::msg::Point> & waypoints,
     const lanelet::Id traffic_light_id) const -> std::optional<double>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getFollowingLanelets(
     const lanelet::Id lanelet_id, const lanelet::Ids & candidate_lanelet_ids,
     const double distance = 100, const bool include_self = true) const -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getFollowingLanelets(
     const lanelet::Id, const double distance = 100, const bool include_self = true) const
     -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getHeight(const traffic_simulator_msgs::msg::LaneletPose &) const -> double;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getLaneChangeTrajectory(
     const geometry_msgs::msg::Pose & from,
     const traffic_simulator::lane_change::Parameter & lane_change_parameter,
@@ -166,7 +166,7 @@ public:
     const double forward_distance_threshold) const
     -> std::optional<std::pair<math::geometry::HermiteCurve, double>>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getLaneChangeTrajectory(
     const traffic_simulator_msgs::msg::LaneletPose & from,
     const traffic_simulator::lane_change::Parameter & lane_change_parameter) const
@@ -196,7 +196,6 @@ public:
 
   auto getLeftBound(const lanelet::Id) const -> std::vector<geometry_msgs::msg::Point>;
 
-  // TODO(HansRobo): switch routing graph
   auto getLeftLaneletIds(
     const lanelet::Id, const traffic_simulator::RoutingGraphType routing_graph_type,
     const bool include_opposite_direction = true) const -> lanelet::Ids;
@@ -215,40 +214,39 @@ public:
     const geometry_msgs::msg::Point &, const double distance_threshold,
     const std::size_t search_count = 5) const -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getNextLaneletIds(const lanelet::Ids &) const -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getNextLaneletIds(const lanelet::Ids &, const std::string & turn_direction) const
     -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getNextLaneletIds(const lanelet::Id) const -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getNextLaneletIds(const lanelet::Id, const std::string & turn_direction) const
     -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getPreviousLaneletIds(const lanelet::Ids &) const -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getPreviousLaneletIds(const lanelet::Ids &, const std::string & turn_direction) const
     -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getPreviousLaneletIds(const lanelet::Id) const -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getPreviousLaneletIds(const lanelet::Id, const std::string & turn_direction) const
     -> lanelet::Ids;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto getPreviousLanelets(const lanelet::Id, const double distance = 100) const -> lanelet::Ids;
 
   auto getRightBound(const lanelet::Id) const -> std::vector<geometry_msgs::msg::Point>;
 
-  // TODO(HansRobo): switch routing graph
   auto getRightLaneletIds(
     lanelet::Id, const traffic_simulator::RoutingGraphType routing_graph_type,
     bool include_opposite_direction = true) const -> lanelet::Ids;
@@ -301,42 +299,42 @@ public:
 
   auto isTrafficLightRegulatoryElement(const lanelet::Id) const -> bool;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto matchToLane(
     const geometry_msgs::msg::Pose &, const traffic_simulator_msgs::msg::BoundingBox &,
     const bool include_crosswalk, const double matching_distance = 1.0,
     const double reduction_ratio = 0.8) const -> std::optional<lanelet::Id>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const bool include_crosswalk,
     const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const lanelet::Ids &,
     const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto toLaneletPose(
     const geometry_msgs::msg::Point &, const traffic_simulator_msgs::msg::BoundingBox &,
     const bool include_crosswalk, const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const traffic_simulator_msgs::msg::BoundingBox &,
     const bool include_crosswalk, const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const lanelet::Id, const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto toLaneletPoses(
     const geometry_msgs::msg::Pose &, const lanelet::Id, const double matching_distance = 5.0,
     const bool include_opposite_direction = true) const
@@ -347,7 +345,7 @@ public:
   auto toMapPoints(const lanelet::Id, const std::vector<double> & s) const
     -> std::vector<geometry_msgs::msg::Point>;
 
-  // TODO(HansRobo): switch routing graph
+  /// @note This function implicitly uses the routing graph for the vehicle.
   auto toMapPose(const traffic_simulator_msgs::msg::LaneletPose &, const bool fill_pitch = true)
     const -> geometry_msgs::msg::PoseStamped;
 
