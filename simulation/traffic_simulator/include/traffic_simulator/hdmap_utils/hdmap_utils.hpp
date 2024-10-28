@@ -239,21 +239,34 @@ public:
       traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const -> lanelet::Ids;
 
   /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getPreviousLaneletIds(const lanelet::Ids &) const -> lanelet::Ids;
-
-  /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getPreviousLaneletIds(const lanelet::Ids &, const std::string & turn_direction) const
+  auto getPreviousLaneletIds(
+    const lanelet::Ids &, const traffic_simulator::RoutingGraphType routing_graph_type =
+                            traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const
     -> lanelet::Ids;
 
   /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getPreviousLaneletIds(const lanelet::Id) const -> lanelet::Ids;
+  auto getPreviousLaneletIds(
+    const lanelet::Ids &, const std::string & turn_direction,
+    const traffic_simulator::RoutingGraphType routing_graph_type =
+      traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const -> lanelet::Ids;
 
   /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getPreviousLaneletIds(const lanelet::Id, const std::string & turn_direction) const
+  auto getPreviousLaneletIds(
+    const lanelet::Id, const traffic_simulator::RoutingGraphType routing_graph_type =
+                         traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const
     -> lanelet::Ids;
 
   /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getPreviousLanelets(const lanelet::Id, const double distance = 100) const -> lanelet::Ids;
+  auto getPreviousLaneletIds(
+    const lanelet::Id, const std::string & turn_direction,
+    const traffic_simulator::RoutingGraphType routing_graph_type =
+      traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const -> lanelet::Ids;
+
+  /// @note This function implicitly uses the routing graph for the vehicle.
+  auto getPreviousLanelets(
+    const lanelet::Id, const double distance = 100,
+    const traffic_simulator::RoutingGraphType routing_graph_type =
+      traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const -> lanelet::Ids;
 
   auto getRightBound(const lanelet::Id) const -> std::vector<geometry_msgs::msg::Point>;
 
