@@ -381,14 +381,14 @@ private:
     };
 
     [[nodiscard]] lanelet::routing::RoutingGraphPtr get(
-      const RoutingConfigurations::RoutingGraphType type) const
+      const traffic_simulator::RoutingGraphType type) const
     {
       switch (type) {
-        case RoutingConfigurations::RoutingGraphType::VEHICLE:
+        case traffic_simulator::RoutingGraphType::VEHICLE:
           return vehicle.graph;
-        case RoutingConfigurations::RoutingGraphType::VEHICLE_SHOULDER:
+        case traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER:
           return vehicle_with_shoulder.graph;
-        case RoutingConfigurations::RoutingGraphType::PEDESTRIAN:
+        case traffic_simulator::RoutingGraphType::PEDESTRIAN:
           return pedestrian.graph;
         default:
           throw std::runtime_error("Invalid routing graph type");
@@ -396,28 +396,28 @@ private:
     }
 
     [[nodiscard]] lanelet::traffic_rules::TrafficRulesPtr getRules(
-      const RoutingConfigurations::RoutingGraphType type) const
+      const traffic_simulator::RoutingGraphType type) const
     {
       switch (type) {
-        case RoutingConfigurations::RoutingGraphType::VEHICLE:
+        case traffic_simulator::RoutingGraphType::VEHICLE:
           return vehicle.rules;
-        case RoutingConfigurations::RoutingGraphType::VEHICLE_SHOULDER:
+        case traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER:
           return vehicle_with_shoulder.rules;
-        case RoutingConfigurations::RoutingGraphType::PEDESTRIAN:
+        case traffic_simulator::RoutingGraphType::PEDESTRIAN:
           return pedestrian.rules;
         default:
           throw std::runtime_error("Invalid routing graph type");
       }
     }
 
-    [[nodiscard]] RouteCache & getRouteCache(const RoutingConfigurations::RoutingGraphType type)
+    [[nodiscard]] RouteCache & getRouteCache(const traffic_simulator::RoutingGraphType type)
     {
       switch (type) {
-        case RoutingConfigurations::RoutingGraphType::VEHICLE:
+        case traffic_simulator::RoutingGraphType::VEHICLE:
           return vehicle.route_cache;
-        case RoutingConfigurations::RoutingGraphType::VEHICLE_SHOULDER:
+        case traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER:
           return vehicle_with_shoulder.route_cache;
-        case RoutingConfigurations::RoutingGraphType::PEDESTRIAN:
+        case traffic_simulator::RoutingGraphType::PEDESTRIAN:
           return pedestrian.route_cache;
         default:
           throw std::runtime_error("Invalid routing graph type");

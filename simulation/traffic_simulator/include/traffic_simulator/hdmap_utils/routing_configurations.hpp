@@ -15,6 +15,7 @@
 #ifndef TRAFFIC_SIMULATOR__HDMAP_UTILS__ROUTING_CONFIGURATIONS_HPP_
 #define TRAFFIC_SIMULATOR__HDMAP_UTILS__ROUTING_CONFIGURATIONS_HPP_
 #include <iostream>
+#include <traffic_simulator/data_type/routing_graph_type.hpp>
 
 namespace hdmap_utils
 {
@@ -22,8 +23,8 @@ struct RoutingConfigurations
 {
   bool allow_lane_change = false;
   bool use_road_shoulder = false;
-  enum class RoutingGraphType : std::uint8_t { VEHICLE, VEHICLE_SHOULDER, PEDESTRIAN };
-  RoutingGraphType routing_graph_type = RoutingGraphType::VEHICLE;
+  traffic_simulator::RoutingGraphType routing_graph_type =
+    traffic_simulator::RoutingGraphType::VEHICLE;
 
   bool operator==(const RoutingConfigurations & routing_configuration) const
   {
@@ -34,24 +35,9 @@ struct RoutingConfigurations
 
   friend std::ostream & operator<<(std::ostream & os, const RoutingConfigurations & rc)
   {
-    os << "{allow_lane_change: " << (rc.allow_lane_change ? "true" : "false")
+    os << "{ allow_lane_change: " << (rc.allow_lane_change ? "true" : "false")
        << ", use_road_shoulder: " << (rc.use_road_shoulder ? "true" : "false")
-       << ", routing_graph_type: ";
-
-    os << [](const RoutingGraphType & type) {
-#define CASE(type)                                    \
-  case RoutingConfigurations::RoutingGraphType::type: \
-    return #type;
-      switch (type) {
-        CASE(VEHICLE)
-        CASE(PEDESTRIAN)
-        default:
-          return "UNKNOWN";
-      }
-#undef CASE
-    }(rc.routing_graph_type);
-
-    os << "}";
+       << ", routing_graph_type: " << rc.routing_graph_type << " }";
     return os;
   }
 };
