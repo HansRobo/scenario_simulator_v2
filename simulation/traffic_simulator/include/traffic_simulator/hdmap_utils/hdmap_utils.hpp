@@ -214,19 +214,29 @@ public:
     const geometry_msgs::msg::Point &, const double distance_threshold,
     const std::size_t search_count = 5) const -> lanelet::Ids;
 
-  /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getNextLaneletIds(const lanelet::Ids &) const -> lanelet::Ids;
-
-  /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getNextLaneletIds(const lanelet::Ids &, const std::string & turn_direction) const
+  /// @note default routing graph type is VEHICLE_SHOULDER to keep backward compatibility
+  auto getNextLaneletIds(
+    const lanelet::Ids &, const traffic_simulator::RoutingGraphType routing_graph_type =
+                            traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const
     -> lanelet::Ids;
 
-  /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getNextLaneletIds(const lanelet::Id) const -> lanelet::Ids;
+  /// @note default routing graph type is VEHICLE_SHOULDER to keep backward compatibility
+  auto getNextLaneletIds(
+    const lanelet::Ids &, const std::string & turn_direction,
+    const traffic_simulator::RoutingGraphType routing_graph_type =
+      traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const -> lanelet::Ids;
 
-  /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getNextLaneletIds(const lanelet::Id, const std::string & turn_direction) const
+  /// @note default routing graph type is VEHICLE_SHOULDER to keep backward compatibility
+  auto getNextLaneletIds(
+    const lanelet::Id, const traffic_simulator::RoutingGraphType routing_graph_type =
+                         traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const
     -> lanelet::Ids;
+
+  /// @note default routing graph type is VEHICLE_SHOULDER to keep backward compatibility
+  auto getNextLaneletIds(
+    const lanelet::Id, const std::string & turn_direction,
+    const traffic_simulator::RoutingGraphType routing_graph_type =
+      traffic_simulator::RoutingGraphType::VEHICLE_SHOULDER) const -> lanelet::Ids;
 
   /// @note This function implicitly uses the routing graph for the vehicle.
   auto getPreviousLaneletIds(const lanelet::Ids &) const -> lanelet::Ids;
@@ -472,8 +482,6 @@ private:
     const geometry_msgs::msg::Pose & from, const traffic_simulator_msgs::msg::LaneletPose & to,
     const traffic_simulator::lane_change::TrajectoryShape,
     const double tangent_vector_size = 100) const -> math::geometry::HermiteCurve;
-
-  auto getNextRoadShoulderLanelet(const lanelet::Id) const -> lanelet::Ids;
 
   auto getPreviousRoadShoulderLanelet(const lanelet::Id) const -> lanelet::Ids;
 

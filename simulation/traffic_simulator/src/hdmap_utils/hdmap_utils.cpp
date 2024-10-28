@@ -1103,52 +1103,36 @@ auto HdMapUtils::getPreviousLaneletIds(
   return sortAndUnique(ids);
 }
 
-auto HdMapUtils::getNextRoadShoulderLanelet(const lanelet::Id lanelet_id) const -> lanelet::Ids
+auto HdMapUtils::getNextLaneletIds(
+  const lanelet::Id lanelet_id, const traffic_simulator::RoutingGraphType routing_graph_type) const
+  -> lanelet::Ids
 {
   lanelet::Ids ids;
   const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
-  for (const auto & shoulder_lanelet : shoulder_lanelets_) {
-    if (lanelet::geometry::follows(lanelet, shoulder_lanelet)) {
-      ids.push_back(shoulder_lanelet.id());
-    }
-  }
-  return ids;
-}
-
-// TODO(HansRobo): switch routing graph
-auto HdMapUtils::getNextLaneletIds(const lanelet::Id lanelet_id) const -> lanelet::Ids
-{
-  lanelet::Ids ids;
-  const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
-  for (const auto & llt :
-       routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->following(lanelet)) {
+  for (const auto & llt : routing_graphs_->get(routing_graph_type)->following(lanelet)) {
     ids.push_back(llt.id());
   }
-  for (const auto & id : getNextRoadShoulderLanelet(lanelet_id)) {
-    ids.push_back(id);
-  }
   return ids;
 }
 
-// TODO(HansRobo): switch routing graph
-auto HdMapUtils::getNextLaneletIds(const lanelet::Ids & lanelet_ids) const -> lanelet::Ids
+auto HdMapUtils::getNextLaneletIds(
+  const lanelet::Ids & lanelet_ids,
+  const traffic_simulator::RoutingGraphType routing_graph_type) const -> lanelet::Ids
 {
   lanelet::Ids ids;
   for (const auto & id : lanelet_ids) {
-    // TODO(HansRobo): switch routing graph
-    ids += getNextLaneletIds(id);
+    ids += getNextLaneletIds(id, routing_graph_type);
   }
   return sortAndUnique(ids);
 }
 
-// TODO(HansRobo): switch routing graph
 auto HdMapUtils::getNextLaneletIds(
-  const lanelet::Id lanelet_id, const std::string & turn_direction) const -> lanelet::Ids
+  const lanelet::Id lanelet_id, const std::string & turn_direction,
+  const traffic_simulator::RoutingGraphType routing_graph_type) const -> lanelet::Ids
 {
   lanelet::Ids ids;
   const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
-  for (const auto & llt :
-       routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->following(lanelet)) {
+  for (const auto & llt : routing_graphs_->get(routing_graph_type)->following(lanelet)) {
     if (llt.attributeOr("turn_direction", "else") == turn_direction) {
       ids.push_back(llt.id());
     }
@@ -1156,14 +1140,13 @@ auto HdMapUtils::getNextLaneletIds(
   return ids;
 }
 
-// TODO(HansRobo): switch routing graph
 auto HdMapUtils::getNextLaneletIds(
-  const lanelet::Ids & lanelet_ids, const std::string & turn_direction) const -> lanelet::Ids
+  const lanelet::Ids & lanelet_ids, const std::string & turn_direction,
+  const traffic_simulator::RoutingGraphType routing_graph_type) const -> lanelet::Ids
 {
   lanelet::Ids ids;
   for (const auto & id : lanelet_ids) {
-    // TODO(HansRobo): switch routing graph
-    ids += getNextLaneletIds(id, turn_direction);
+    ids += getNextLaneletIds(id, turn_direction, routing_graph_type);
   }
   return sortAndUnique(ids);
 }
