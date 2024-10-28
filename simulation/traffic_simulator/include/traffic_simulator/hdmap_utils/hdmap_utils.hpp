@@ -46,7 +46,6 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <traffic_simulator/data_type/lane_change.hpp>
 #include <traffic_simulator/hdmap_utils/cache.hpp>
-#include <traffic_simulator/hdmap_utils/traffic_rules.hpp>
 #include <traffic_simulator_msgs/msg/bounding_box.hpp>
 #include <traffic_simulator_msgs/msg/entity_status.hpp>
 #include <tuple>
@@ -203,35 +202,26 @@ public:
     const geometry_msgs::msg::Point &, const double distance_threshold,
     const std::size_t search_count = 5) const -> lanelet::Ids;
 
-  template <int ROUTING_OPTION = 0>
   auto getNextLaneletIds(const lanelet::Ids &) const -> lanelet::Ids;
 
-  template <int ROUTING_OPTION = 0>
   auto getNextLaneletIds(const lanelet::Ids &, const std::string & turn_direction) const
     -> lanelet::Ids;
 
-  template <int ROUTING_OPTION = 0>
   auto getNextLaneletIds(const lanelet::Id) const -> lanelet::Ids;
 
-  template <int ROUTING_OPTION = 0>
   auto getNextLaneletIds(const lanelet::Id, const std::string & turn_direction) const
     -> lanelet::Ids;
 
-  template <int ROUTING_OPTION = 0>
   auto getPreviousLaneletIds(const lanelet::Ids &) const -> lanelet::Ids;
 
-  template <int ROUTING_OPTION = 0>
   auto getPreviousLaneletIds(const lanelet::Ids &, const std::string & turn_direction) const
     -> lanelet::Ids;
 
-  template <int ROUTING_OPTION = 0>
   auto getPreviousLaneletIds(const lanelet::Id) const -> lanelet::Ids;
 
-  template <int ROUTING_OPTION = 0>
   auto getPreviousLaneletIds(const lanelet::Id, const std::string & turn_direction) const
     -> lanelet::Ids;
 
-  template <int ROUTING_OPTION = 0>
   auto getPreviousLanelets(const lanelet::Id, const double distance = 100) const -> lanelet::Ids;
 
   auto getRightBound(const lanelet::Id) const -> std::vector<geometry_msgs::msg::Point>;
@@ -288,42 +278,35 @@ public:
 
   auto isTrafficLightRegulatoryElement(const lanelet::Id) const -> bool;
 
-  template <int ROUTING_OPTION = 0>
   auto matchToLane(
     const geometry_msgs::msg::Pose &, const traffic_simulator_msgs::msg::BoundingBox &,
     const bool include_crosswalk, const double matching_distance = 1.0,
     const double reduction_ratio = 0.8) const -> std::optional<lanelet::Id>;
 
-  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const bool include_crosswalk,
     const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const lanelet::Ids &,
     const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Point &, const traffic_simulator_msgs::msg::BoundingBox &,
     const bool include_crosswalk, const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const traffic_simulator_msgs::msg::BoundingBox &,
     const bool include_crosswalk, const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  template <int ROUTING_OPTION = 0>
   auto toLaneletPose(
     const geometry_msgs::msg::Pose &, const lanelet::Id, const double matching_distance = 1.0) const
     -> std::optional<traffic_simulator_msgs::msg::LaneletPose>;
 
-  template <int ROUTING_OPTION = 0>
   auto toLaneletPoses(
     const geometry_msgs::msg::Pose &, const lanelet::Id, const double matching_distance = 5.0,
     const bool include_opposite_direction = true) const
@@ -334,7 +317,6 @@ public:
   auto toMapPoints(const lanelet::Id, const std::vector<double> & s) const
     -> std::vector<geometry_msgs::msg::Point>;
 
-  template <int ROUTING_OPTION = 0>
   auto toMapPose(const traffic_simulator_msgs::msg::LaneletPose &, const bool fill_pitch = true)
     const -> geometry_msgs::msg::PoseStamped;
 
@@ -356,7 +338,7 @@ private:
     explicit RoutingGraphs(const lanelet::LaneletMapPtr & lanelet_map)
     {
       vehicle.rules = lanelet::traffic_rules::TrafficRulesFactory::create(
-        Locations::RoadShoulderPassableGermany, lanelet::Participants::Vehicle);
+        lanelet::Locations::Germany, lanelet::Participants::Vehicle);
       vehicle.graph = lanelet::routing::RoutingGraph::build(*lanelet_map, *vehicle.rules);
       pedestrian.rules = lanelet::traffic_rules::TrafficRulesFactory::create(
         lanelet::Locations::Germany, lanelet::Participants::Pedestrian);
@@ -370,14 +352,12 @@ private:
     };
 
     [[nodiscard]] lanelet::routing::RoutingGraphPtr get(
-      const RoutingConfigurations::RoutingGraphType type) const
+      const traffic_simulator::RoutingGraphType type) const
     {
       switch (type) {
-        case RoutingConfigurations::RoutingGraphType::VEHICLE:
+        case traffic_simulator::RoutingGraphType::VEHICLE:
           return vehicle.graph;
-        case RoutingConfigurations::RoutingGraphType::VEHICLE_SHOULDER:
-          return vehicle_with_shoulder.graph;
-        case RoutingConfigurations::RoutingGraphType::PEDESTRIAN:
+        case traffic_simulator::RoutingGraphType::PEDESTRIAN:
           return pedestrian.graph;
         default:
           throw std::runtime_error("Invalid routing graph type");
@@ -385,28 +365,24 @@ private:
     }
 
     [[nodiscard]] lanelet::traffic_rules::TrafficRulesPtr getRules(
-      const RoutingConfigurations::RoutingGraphType type) const
+      const traffic_simulator::RoutingGraphType type) const
     {
       switch (type) {
-        case RoutingConfigurations::RoutingGraphType::VEHICLE:
+        case traffic_simulator::RoutingGraphType::VEHICLE:
           return vehicle.rules;
-        case RoutingConfigurations::RoutingGraphType::VEHICLE_SHOULDER:
-          return vehicle_with_shoulder.rules;
-        case RoutingConfigurations::RoutingGraphType::PEDESTRIAN:
+        case traffic_simulator::RoutingGraphType::PEDESTRIAN:
           return pedestrian.rules;
         default:
           throw std::runtime_error("Invalid routing graph type");
       }
     }
 
-    [[nodiscard]] RouteCache & getRouteCache(const RoutingConfigurations::RoutingGraphType type)
+    [[nodiscard]] RouteCache & getRouteCache(const traffic_simulator::RoutingGraphType type)
     {
       switch (type) {
-        case RoutingConfigurations::RoutingGraphType::VEHICLE:
+        case traffic_simulator::RoutingGraphType::VEHICLE:
           return vehicle.route_cache;
-        case RoutingConfigurations::RoutingGraphType::VEHICLE_SHOULDER:
-          return vehicle_with_shoulder.route_cache;
-        case RoutingConfigurations::RoutingGraphType::PEDESTRIAN:
+        case traffic_simulator::RoutingGraphType::PEDESTRIAN:
           return pedestrian.route_cache;
         default:
           throw std::runtime_error("Invalid routing graph type");

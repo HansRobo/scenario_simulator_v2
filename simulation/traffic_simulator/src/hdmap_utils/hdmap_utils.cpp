@@ -78,8 +78,8 @@ HdMapUtils::HdMapUtils(
   }
   overwriteLaneletsCenterline();
   std::vector<lanelet::routing::RoutingGraphConstPtr> all_graphs;
-  all_graphs.push_back(routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE));
-  all_graphs.push_back(routing_graphs_->get(RoutingConfigurations::RoutingGraphType::PEDESTRIAN));
+  all_graphs.push_back(routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE));
+  all_graphs.push_back(routing_graphs_->get(traffic_simulator::RoutingGraphType::PEDESTRIAN));
   shoulder_lanelets_ =
     lanelet::utils::query::shoulderLanelets(lanelet::utils::query::laneletLayer(lanelet_map_ptr_));
 }
@@ -398,7 +398,7 @@ auto HdMapUtils::getConflictingLaneIds(const lanelet::Ids & lanelet_ids) const -
   for (const auto & lanelet_id : lanelet_ids) {
     const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
     const auto conflicting_lanelets = lanelet::utils::getConflictingLanelets(
-      routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE), lanelet);
+      routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE), lanelet);
     for (const auto & conflicting_lanelet : conflicting_lanelets) {
       ids.emplace_back(conflicting_lanelet.id());
     }
@@ -410,8 +410,8 @@ auto HdMapUtils::getConflictingCrosswalkIds(const lanelet::Ids & lanelet_ids) co
 {
   lanelet::Ids ids;
   std::vector<lanelet::routing::RoutingGraphConstPtr> graphs;
-  graphs.emplace_back(routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE));
-  graphs.emplace_back(routing_graphs_->get(RoutingConfigurations::RoutingGraphType::PEDESTRIAN));
+  graphs.emplace_back(routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE));
+  graphs.emplace_back(routing_graphs_->get(traffic_simulator::RoutingGraphType::PEDESTRIAN));
   lanelet::routing::RoutingGraphContainer container(graphs);
   for (const auto & lanelet_id : lanelet_ids) {
     const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
@@ -547,7 +547,7 @@ auto HdMapUtils::matchToLane(
     lanelet::matching::getDeterministicMatches(*lanelet_map_ptr_, obj, matching_distance);
   if (!include_crosswalk) {
     matches = lanelet::matching::removeNonRuleCompliantMatches(
-      matches, routing_graphs_->getRules(RoutingConfigurations::RoutingGraphType::VEHICLE));
+      matches, routing_graphs_->getRules(traffic_simulator::RoutingGraphType::VEHICLE));
   }
   if (matches.empty()) {
     return std::nullopt;
@@ -731,7 +731,7 @@ auto HdMapUtils::getSpeedLimit(const lanelet::Ids & lanelet_ids) const -> double
   }
   for (auto itr = lanelet_ids.begin(); itr != lanelet_ids.end(); itr++) {
     const auto lanelet = lanelet_map_ptr_->laneletLayer.get(*itr);
-    const auto limit = routing_graphs_->getRules(RoutingConfigurations::RoutingGraphType::VEHICLE)
+    const auto limit = routing_graphs_->getRules(traffic_simulator::RoutingGraphType::VEHICLE)
                          ->speedLimit(lanelet);
     limits.push_back(lanelet::units::KmHQuantity(limit.speedLimit).value() / 3.6);
   }
@@ -773,15 +773,15 @@ auto HdMapUtils::getLaneChangeableLaneletId(
       target = lanelet.id();
       break;
     case traffic_simulator::lane_change::Direction::LEFT:
-      if (routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE)->left(lanelet)) {
-        target = routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE)
+      if (routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->left(lanelet)) {
+        target = routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)
                    ->left(lanelet)
                    ->id();
       }
       break;
     case traffic_simulator::lane_change::Direction::RIGHT:
-      if (routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE)->right(lanelet)) {
-        target = routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE)
+      if (routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->right(lanelet)) {
+        target = routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)
                    ->right(lanelet)
                    ->id();
       }
@@ -1007,7 +1007,7 @@ auto HdMapUtils::getPreviousLaneletIds(const lanelet::Id lanelet_id) const -> la
   lanelet::Ids ids;
   const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
   for (const auto & llt :
-       routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE)->previous(lanelet)) {
+       routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->previous(lanelet)) {
     ids.push_back(llt.id());
   }
   for (const auto & id : getPreviousRoadShoulderLanelet(lanelet_id)) {
@@ -1031,7 +1031,7 @@ auto HdMapUtils::getPreviousLaneletIds(
   lanelet::Ids ids;
   const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
   for (const auto & llt :
-       routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE)->previous(lanelet)) {
+       routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->previous(lanelet)) {
     if (llt.attributeOr("turn_direction", "else") == turn_direction) {
       ids.push_back(llt.id());
     }
@@ -1066,7 +1066,7 @@ auto HdMapUtils::getNextLaneletIds(const lanelet::Id lanelet_id) const -> lanele
   lanelet::Ids ids;
   const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
   for (const auto & llt :
-       routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE)->following(lanelet)) {
+       routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->following(lanelet)) {
     ids.push_back(llt.id());
   }
   for (const auto & id : getNextRoadShoulderLanelet(lanelet_id)) {
@@ -1090,7 +1090,7 @@ auto HdMapUtils::getNextLaneletIds(
   lanelet::Ids ids;
   const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
   for (const auto & llt :
-       routing_graphs_->get(RoutingConfigurations::RoutingGraphType::VEHICLE)->following(lanelet)) {
+       routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->following(lanelet)) {
     if (llt.attributeOr("turn_direction", "else") == turn_direction) {
       ids.push_back(llt.id());
     }
@@ -1488,7 +1488,7 @@ auto HdMapUtils::canChangeLane(
 {
   const auto from_lanelet = lanelet_map_ptr_->laneletLayer.get(from_lanelet_id);
   const auto to_lanelet = lanelet_map_ptr_->laneletLayer.get(to_lanelet_id);
-  return routing_graphs_->getRules(RoutingConfigurations::RoutingGraphType::VEHICLE)
+  return routing_graphs_->getRules(traffic_simulator::RoutingGraphType::VEHICLE)
     ->canChangeLane(from_lanelet, to_lanelet);
 }
 
