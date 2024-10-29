@@ -864,10 +864,10 @@ auto HdMapUtils::isInRoute(const lanelet::Id lanelet_id, const lanelet::Ids & ro
          }) != route.end();
 }
 
-// TODO(HansRobo): switch routing graph
 auto HdMapUtils::getFollowingLanelets(
   const lanelet::Id lanelet_id, const lanelet::Ids & candidate_lanelet_ids, const double distance,
-  const bool include_self) const -> lanelet::Ids
+  const bool include_self, const traffic_simulator::RoutingGraphType routing_graph_type) const
+  -> lanelet::Ids
 {
   if (candidate_lanelet_ids.empty()) {
     return {};
@@ -897,17 +897,15 @@ auto HdMapUtils::getFollowingLanelets(
     return ids;
   }
   // clang-format off
-  // TODO(HansRobo): switch routing graph
   return ids + getFollowingLanelets(
     candidate_lanelet_ids[candidate_lanelet_ids.size() - 1],
-    distance - total_distance, false);
+    distance - total_distance, false, routing_graph_type);
   // clang-format on
 }
 
-// TODO(HansRobo): switch routing graph
 auto HdMapUtils::getFollowingLanelets(
-  const lanelet::Id lanelet_id, const double distance, const bool include_self) const
-  -> lanelet::Ids
+  const lanelet::Id lanelet_id, const double distance, const bool include_self,
+  const traffic_simulator::RoutingGraphType routing_graph_type) const -> lanelet::Ids
 {
   lanelet::Ids ret;
   double total_distance = 0.0;
@@ -916,15 +914,14 @@ auto HdMapUtils::getFollowingLanelets(
   }
   lanelet::Id end_lanelet_id = lanelet_id;
   while (total_distance < distance) {
-    // TODO(HansRobo): switch routing graph
-    if (const auto straight_ids = getNextLaneletIds(end_lanelet_id, "straight");
+    if (const auto straight_ids = getNextLaneletIds(end_lanelet_id, "straight", routing_graph_type);
         !straight_ids.empty()) {
       total_distance = total_distance + getLaneletLength(straight_ids[0]);
       ret.push_back(straight_ids[0]);
       end_lanelet_id = straight_ids[0];
       continue;
-      // TODO(HansRobo): switch routing graph
-    } else if (const auto ids = getNextLaneletIds(end_lanelet_id); ids.size() != 0) {
+    } else if (const auto ids = getNextLaneletIds(end_lanelet_id, routing_graph_type);
+               ids.size() != 0) {
       total_distance = total_distance + getLaneletLength(ids[0]);
       ret.push_back(ids[0]);
       end_lanelet_id = ids[0];

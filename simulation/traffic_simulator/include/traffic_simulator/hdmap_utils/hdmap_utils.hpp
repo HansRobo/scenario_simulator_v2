@@ -148,12 +148,15 @@ public:
   /// @note This function implicitly uses the routing graph for the vehicle.
   auto getFollowingLanelets(
     const lanelet::Id lanelet_id, const lanelet::Ids & candidate_lanelet_ids,
-    const double distance = 100, const bool include_self = true) const -> lanelet::Ids;
+    const double distance = 100, const bool include_self = true,
+    const traffic_simulator::RoutingGraphType routing_graph_type =
+      traffic_simulator::RoutingGraphType::VEHICLE) const -> lanelet::Ids;
 
   /// @note This function implicitly uses the routing graph for the vehicle.
   auto getFollowingLanelets(
-    const lanelet::Id, const double distance = 100, const bool include_self = true) const
-    -> lanelet::Ids;
+    const lanelet::Id, const double distance = 100, const bool include_self = true,
+    const traffic_simulator::RoutingGraphType routing_graph_type =
+      traffic_simulator::RoutingGraphType::VEHICLE) const -> lanelet::Ids;
 
   /// @note This function implicitly uses the routing graph for the vehicle.
   auto getHeight(const traffic_simulator_msgs::msg::LaneletPose &) const -> double;
