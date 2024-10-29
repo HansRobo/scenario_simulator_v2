@@ -27,8 +27,11 @@ auto lateralDistance(
   bool allow_lane_change, const std::shared_ptr<hdmap_utils::HdMapUtils> & hdmap_utils_ptr)
   -> std::optional<double>
 {
+  hdmap_utils::RoutingConfigurations routing_configurations;
+  routing_configurations.allow_lane_change = allow_lane_change;
+  routing_configurations.use_road_shoulder = false;
   return hdmap_utils_ptr->getLateralDistance(
-    static_cast<LaneletPose>(from), static_cast<LaneletPose>(to), allow_lane_change);
+    static_cast<LaneletPose>(from), static_cast<LaneletPose>(to), routing_configurations);
 }
 
 auto lateralDistance(
@@ -50,8 +53,11 @@ auto countLaneChanges(
   bool allow_lane_change, const std::shared_ptr<hdmap_utils::HdMapUtils> & hdmap_utils_ptr)
   -> std::optional<std::pair<int, int>>
 {
+  hdmap_utils::RoutingConfigurations routing_configurations;
+  routing_configurations.allow_lane_change = allow_lane_change;
+  routing_configurations.use_road_shoulder = false;
   return hdmap_utils_ptr->countLaneChanges(
-    static_cast<LaneletPose>(from), static_cast<LaneletPose>(to), allow_lane_change);
+    static_cast<LaneletPose>(from), static_cast<LaneletPose>(to), routing_configurations);
 }
 
 /// @sa https://github.com/tier4/scenario_simulator_v2/blob/729e4e6372cdba60e377ae097d032905b80763a9/docs/developer_guide/lane_pose_calculation/GetLongitudinalDistance.md
@@ -69,12 +75,15 @@ auto longitudinalDistance(
         to_canonicalized = to_canonicalized_opt.value();
       }
     }
+    hdmap_utils::RoutingConfigurations routing_configurations;
+    routing_configurations.allow_lane_change = allow_lane_change;
+    routing_configurations.use_road_shoulder = false;
 
     const auto forward_distance = hdmap_utils_ptr->getLongitudinalDistance(
-      static_cast<LaneletPose>(from), to_canonicalized, allow_lane_change);
+      static_cast<LaneletPose>(from), to_canonicalized, routing_configurations);
 
     const auto backward_distance = hdmap_utils_ptr->getLongitudinalDistance(
-      to_canonicalized, static_cast<LaneletPose>(from), allow_lane_change);
+      to_canonicalized, static_cast<LaneletPose>(from), routing_configurations);
 
     if (forward_distance && backward_distance) {
       return forward_distance.value() > backward_distance.value() ? -backward_distance.value()
