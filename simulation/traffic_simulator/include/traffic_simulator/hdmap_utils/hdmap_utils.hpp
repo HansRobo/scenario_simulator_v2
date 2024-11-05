@@ -118,8 +118,10 @@ public:
   /// @note This function implicitly uses the routing graph for the vehicle.
   auto getConflictingCrosswalkIds(const lanelet::Ids &) const -> lanelet::Ids;
 
-  /// @note This function implicitly uses the routing graph for the vehicle.
-  auto getConflictingLaneIds(const lanelet::Ids &) const -> lanelet::Ids;
+  /// @note default routing graph type is VEHICLE to keep backward compatibility
+  auto getConflictingLaneIds(
+    const lanelet::Ids &, const traffic_simulator::RoutingGraphType routing_graph_type =
+                            traffic_simulator::RoutingGraphType::VEHICLE) const -> lanelet::Ids;
 
   auto getDistanceToStopLine(
     const lanelet::Ids & route_lanelets,

@@ -404,14 +404,15 @@ auto HdMapUtils::getCollisionPointInLaneCoordinate(
   return std::nullopt;
 }
 
-// TODO(HansRobo): switch routing graph
-auto HdMapUtils::getConflictingLaneIds(const lanelet::Ids & lanelet_ids) const -> lanelet::Ids
+auto HdMapUtils::getConflictingLaneIds(
+  const lanelet::Ids & lanelet_ids,
+  const traffic_simulator::RoutingGraphType routing_graph_type) const -> lanelet::Ids
 {
   lanelet::Ids ids;
   for (const auto & lanelet_id : lanelet_ids) {
     const auto lanelet = lanelet_map_ptr_->laneletLayer.get(lanelet_id);
-    const auto conflicting_lanelets = lanelet::utils::getConflictingLanelets(
-      routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE), lanelet);
+    const auto conflicting_lanelets =
+      lanelet::utils::getConflictingLanelets(routing_graphs_->get(routing_graph_type), lanelet);
     for (const auto & conflicting_lanelet : conflicting_lanelets) {
       ids.emplace_back(conflicting_lanelet.id());
     }
