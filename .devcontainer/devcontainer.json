@@ -1,0 +1,15 @@
+{
+  "name": "scenario_simulator_v2 workspace",
+  "service": "scenario_simulator_v2",
+  "workspaceFolder": "/root/ros2_ws/src/scenario_simulator_v2",
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+      ]
+    },
+    "codespaces": {
+      "openFiles": ["README.md"]
+    }
+  }
+}
