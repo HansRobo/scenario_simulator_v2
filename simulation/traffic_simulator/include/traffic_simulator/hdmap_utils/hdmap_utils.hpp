@@ -206,8 +206,8 @@ public:
     const bool include_opposite_direction = true) const -> lanelet::Ids;
 
   auto getLongitudinalDistance(
-    const traffic_simulator_msgs::msg::LaneletPose & from,
-    const traffic_simulator_msgs::msg::LaneletPose & to,
+    const traffic_simulator_msgs::msg::LaneletPose & from_pose,
+    const traffic_simulator_msgs::msg::LaneletPose & to_pose,
     const RoutingConfigurations & routing_config = RoutingConfigurations()) const
     -> std::optional<double>;
 
