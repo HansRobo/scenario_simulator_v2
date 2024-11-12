@@ -23,7 +23,8 @@ struct RoutingConfigurations
 {
   bool allow_lane_change = false;
   bool use_road_shoulder = false;
-  traffic_simulator::RoutingGraphType routing_graph_type = traffic_simulator::RoutingGraphType::VEHICLE;
+  traffic_simulator::RoutingGraphType routing_graph_type =
+    traffic_simulator::RoutingGraphType::VEHICLE;
 
   bool operator==(const RoutingConfigurations & routing_configuration) const
   {
@@ -42,16 +43,19 @@ struct RoutingConfigurations
 };
 }  // namespace hdmap_utils
 
-namespace std {
-  template <>
-  struct hash<hdmap_utils::RoutingConfigurations> {
-    std::size_t operator()(const hdmap_utils::RoutingConfigurations& config) const {
-      auto h1 = std::hash<bool>{}(config.allow_lane_change);
-      auto h2 = std::hash<bool>{}(config.use_road_shoulder);
-      auto h3 = std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(config.routing_graph_type));
-      return h1 ^ (h2 << 1) ^ (h3 << 2);
-    }
-  };
+namespace std
+{
+template <>
+struct hash<hdmap_utils::RoutingConfigurations>
+{
+  std::size_t operator()(const hdmap_utils::RoutingConfigurations & config) const
+  {
+    auto h1 = std::hash<bool>{}(config.allow_lane_change);
+    auto h2 = std::hash<bool>{}(config.use_road_shoulder);
+    auto h3 = std::hash<std::uint8_t>{}(static_cast<std::uint8_t>(config.routing_graph_type));
+    return h1 ^ (h2 << 1) ^ (h3 << 2);
+  }
+};
 }  // namespace std
 
 #endif  // TRAFFIC_SIMULATOR__HDMAP_UTILS__ROUTING_CONFIGURATIONS_HPP_

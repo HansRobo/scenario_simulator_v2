@@ -675,8 +675,10 @@ auto HdMapUtils::toLaneletPoses(
 {
   std::vector<traffic_simulator_msgs::msg::LaneletPose> ret;
   std::vector lanelet_ids = {lanelet_id};
-  lanelet_ids += getLeftLaneletIds(lanelet_id, traffic_simulator::RoutingGraphType::VEHICLE, include_opposite_direction);
-  lanelet_ids += getRightLaneletIds(lanelet_id, traffic_simulator::RoutingGraphType::VEHICLE, include_opposite_direction);
+  lanelet_ids += getLeftLaneletIds(
+    lanelet_id, traffic_simulator::RoutingGraphType::VEHICLE, include_opposite_direction);
+  lanelet_ids += getRightLaneletIds(
+    lanelet_id, traffic_simulator::RoutingGraphType::VEHICLE, include_opposite_direction);
   lanelet_ids += getPreviousLaneletIds(lanelet_ids);
   lanelet_ids += getNextLaneletIds(lanelet_ids);
   for (const auto & id : sortAndUnique(lanelet_ids)) {
@@ -727,8 +729,8 @@ auto HdMapUtils::getSpeedLimit(const lanelet::Ids & lanelet_ids) const -> double
   }
   for (auto itr = lanelet_ids.begin(); itr != lanelet_ids.end(); itr++) {
     const auto lanelet = lanelet_map_ptr_->laneletLayer.get(*itr);
-    const auto limit = routing_graphs_->getRules(traffic_simulator::RoutingGraphType::VEHICLE)
-                         ->speedLimit(lanelet);
+    const auto limit =
+      routing_graphs_->getRules(traffic_simulator::RoutingGraphType::VEHICLE)->speedLimit(lanelet);
     limits.push_back(lanelet::units::KmHQuantity(limit.speedLimit).value() / 3.6);
   }
   return *std::min_element(limits.begin(), limits.end());
@@ -770,16 +772,14 @@ auto HdMapUtils::getLaneChangeableLaneletId(
       break;
     case traffic_simulator::lane_change::Direction::LEFT:
       if (routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->left(lanelet)) {
-        target = routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)
-                   ->left(lanelet)
-                   ->id();
+        target =
+          routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->left(lanelet)->id();
       }
       break;
     case traffic_simulator::lane_change::Direction::RIGHT:
       if (routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->right(lanelet)) {
-        target = routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)
-                   ->right(lanelet)
-                   ->id();
+        target =
+          routing_graphs_->get(traffic_simulator::RoutingGraphType::VEHICLE)->right(lanelet)->id();
       }
       break;
   }
