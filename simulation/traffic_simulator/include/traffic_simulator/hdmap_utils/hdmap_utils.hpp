@@ -184,9 +184,9 @@ public:
 
   auto getLeftBound(const lanelet::Id) const -> std::vector<geometry_msgs::msg::Point>;
 
-  template <int ROUTING_OPTION>
-  auto getLeftLaneletIds(const lanelet::Id, const bool include_opposite_direction = true) const
-    -> lanelet::Ids;
+  auto getLeftLaneletIds(
+    const lanelet::Id, const traffic_simulator::RoutingGraphType &,
+    const bool include_opposite_direction = true) const -> lanelet::Ids;
 
   auto getLongitudinalDistance(
     const traffic_simulator_msgs::msg::LaneletPose & from_pose,
@@ -226,9 +226,9 @@ public:
 
   auto getRightBound(const lanelet::Id) const -> std::vector<geometry_msgs::msg::Point>;
 
-  template <int ROUTING_OPTION = 0>
-  auto getRightLaneletIds(lanelet::Id, bool include_opposite_direction = true) const
-    -> lanelet::Ids;
+  auto getRightLaneletIds(
+    const lanelet::Id, const traffic_simulator::RoutingGraphType &,
+    const bool include_opposite_direction = true) const -> lanelet::Ids;
 
   auto getRightOfWayLaneletIds(const lanelet::Ids &) const
     -> std::unordered_map<lanelet::Id, lanelet::Ids>;
