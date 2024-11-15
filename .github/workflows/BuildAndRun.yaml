@@ -24,7 +24,12 @@ concurrency:
 jobs:
   job1:
     name: BuildAndRun
-    runs-on: ${{ matrix.runs_on }}
+    runs-on: >-
+      ${{
+        (contains(github.event.pull_request.labels.*.name, 'SelfHostedRunner'))
+          && fromJSON('[ "self-hosted"]')
+          || fromJSON('[ "ubuntu-22.04" ]')
+      }}
     timeout-minutes: 180
     container: ros:${{ matrix.rosdistro }}
     env:
