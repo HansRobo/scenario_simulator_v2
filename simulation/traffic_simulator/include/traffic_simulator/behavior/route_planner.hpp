@@ -28,8 +28,10 @@ class RoutePlanner
 public:
   explicit RoutePlanner(const std::shared_ptr<hdmap_utils::HdMapUtils> &);
 
-  auto getRouteLanelets(const CanonicalizedLaneletPose & entity_lanelet_pose, double horizon = 100)
-    -> lanelet::Ids;
+  auto getRouteLanelets(
+    const CanonicalizedLaneletPose & entity_lanelet_pose, double horizon = 100,
+    const traffic_simulator::RoutingGraphType routing_graph_type =
+      traffic_simulator::RoutingGraphType::VEHICLE) -> lanelet::Ids;
 
   auto setWaypoints(const std::vector<CanonicalizedLaneletPose> & waypoints) -> void;
 

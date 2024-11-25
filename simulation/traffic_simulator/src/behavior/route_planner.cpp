@@ -31,7 +31,8 @@ auto RoutePlanner::setWaypoints(const std::vector<CanonicalizedLaneletPose> & wa
 }
 
 auto RoutePlanner::getRouteLanelets(
-  const CanonicalizedLaneletPose & entity_lanelet_pose, double horizon) -> lanelet::Ids
+  const CanonicalizedLaneletPose & entity_lanelet_pose, double horizon,
+  const traffic_simulator::RoutingGraphType routing_graph_type) -> lanelet::Ids
 {
   const auto lanelet_pose = static_cast<LaneletPose>(entity_lanelet_pose);
   // If the queue is not empty, calculating route from the entity_lanelet_pose to waypoint_queue_.front()
@@ -41,15 +42,17 @@ auto RoutePlanner::getRouteLanelets(
   // If the route from the entity_lanelet_pose to waypoint_queue_.front() was failed to calculate in updateRoute function,
   // use following lanelet as route.
   if (!route_) {
-    return hdmap_utils_ptr_->getFollowingLanelets(lanelet_pose.lanelet_id, horizon, true);
+    return hdmap_utils_ptr_->getFollowingLanelets(
+      lanelet_pose.lanelet_id, horizon, true, routing_graph_type);
   }
   if (route_ && hdmap_utils_ptr_->isInRoute(lanelet_pose.lanelet_id, route_.value())) {
     return hdmap_utils_ptr_->getFollowingLanelets(
-      lanelet_pose.lanelet_id, route_.value(), horizon, true);
+      lanelet_pose.lanelet_id, route_.value(), horizon, true, routing_graph_type);
   }
   // If the entity_lanelet_pose is in the lanelet id of the waypoint queue, cancel the target waypoint.
   cancelWaypoint(entity_lanelet_pose);
-  return hdmap_utils_ptr_->getFollowingLanelets(lanelet_pose.lanelet_id, horizon, true);
+  return hdmap_utils_ptr_->getFollowingLanelets(
+    lanelet_pose.lanelet_id, horizon, true, routing_graph_type);
 }
 
 void RoutePlanner::cancelRoute()

@@ -20,23 +20,29 @@
 #include <mutex>
 #include <optional>
 #include <scenario_simulator_exception/exception.hpp>
+#include <traffic_simulator/hdmap_utils/routing_configurations.hpp>
 #include <unordered_map>
 #include <vector>
 
 namespace std
 {
 template <>
-struct hash<std::tuple<lanelet::Id, lanelet::Id, bool>>
+struct hash<std::tuple<lanelet::Id, lanelet::Id, hdmap_utils::RoutingConfigurations>>
 {
 public:
-  size_t operator()(const std::tuple<lanelet::Id, lanelet::Id, bool> & data) const
+  size_t operator()(
+    const std::tuple<lanelet::Id, lanelet::Id, hdmap_utils::RoutingConfigurations> & data) const
   {
     std::hash<lanelet::Id> lanelet_id_hash;
+    std::hash<hdmap_utils::RoutingConfigurations> routing_configurations_hash;
     size_t seed = 0;
     // hash combine like boost library
-    seed ^= lanelet_id_hash(std::get<0>(data)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    seed ^= lanelet_id_hash(std::get<1>(data)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    seed ^= std::hash<bool>{}(std::get<2>(data)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    auto hash_combine = [](size_t & seed, size_t hash) {
+      return seed ^ (hash + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+    };
+    seed = hash_combine(seed, lanelet_id_hash(std::get<0>(data)));
+    seed = hash_combine(seed, lanelet_id_hash(std::get<1>(data)));
+    seed = hash_combine(seed, routing_configurations_hash(std::get<2>(data)));
     return seed;
   }
 };
@@ -47,36 +53,43 @@ namespace hdmap_utils
 class RouteCache
 {
 public:
-  auto exists(lanelet::Id from, lanelet::Id to, bool allow_lane_change)
+  using KeyType = std::tuple<lanelet::Id, lanelet::Id, hdmap_utils::RoutingConfigurations>;
+  auto exists(
+    lanelet::Id from, lanelet::Id to,
+    const hdmap_utils::RoutingConfigurations & routing_configurations) -> bool
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    std::tuple<lanelet::Id, lanelet::Id, bool> key = {from, to, allow_lane_change};
+    KeyType key = {from, to, routing_configurations};
     return data_.find(key) != data_.end();
   }
 
-  auto getRoute(const lanelet::Id from, const lanelet::Id to, const bool allow_lane_change)
-    -> decltype(auto)
+  auto getRoute(
+    const lanelet::Id from, const lanelet::Id to,
+    const hdmap_utils::RoutingConfigurations & routing_configurations) -> decltype(auto)
   {
-    if (!exists(from, to, allow_lane_change)) {
+    if (!exists(from, to, routing_configurations)) {
       THROW_SIMULATION_ERROR(
-        "route from : ", from, " to : ", to, (allow_lane_change ? " with" : " without"),
+        "route from : ", from, " to : ", to,
+        (routing_configurations.allow_lane_change ? " with" : " without"),
         " lane change does not exists on route cache.");
     } else {
       std::lock_guard<std::mutex> lock(mutex_);
-      return data_.at({from, to, allow_lane_change});
+      KeyType key = {from, to, routing_configurations};
+      return data_.at(key);
     }
   }
 
   auto appendData(
-    lanelet::Id from, lanelet::Id to, const bool allow_lane_change, const lanelet::Ids & route)
-    -> void
+    lanelet::Id from, lanelet::Id to, const RoutingConfigurations & routing_configurations,
+    const lanelet::Ids & route) -> void
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    data_[{from, to, allow_lane_change}] = route;
+    KeyType key = {from, to, routing_configurations};
+    data_[key] = route;
   }
 
 private:
-  std::unordered_map<std::tuple<lanelet::Id, lanelet::Id, bool>, lanelet::Ids> data_;
+  std::unordered_map<KeyType, lanelet::Ids> data_;
 
   std::mutex mutex_;
 };
