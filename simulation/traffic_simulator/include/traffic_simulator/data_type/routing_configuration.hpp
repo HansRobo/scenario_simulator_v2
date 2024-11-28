@@ -14,6 +14,7 @@
 
 #ifndef TRAFFIC_SIMULATOR__DATA_TYPE__ROUTING_CONFIGURATIONS_HPP_
 #define TRAFFIC_SIMULATOR__DATA_TYPE__ROUTING_CONFIGURATIONS_HPP_
+
 #include <iostream>
 #include <traffic_simulator/data_type/routing_graph_type.hpp>
 
