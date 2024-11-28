@@ -719,8 +719,7 @@ auto EntityBase::requestSynchronize(
       lane_changeable_routing_configuration.allow_lane_change = true;
 
       const auto entity_distance = longitudinalDistance(
-        entity_lanelet_pose.value(), entity_target, true, true,
-        lane_changeable_routing_configuration, hdmap_utils_ptr_);
+        entity_lanelet_pose.value(), entity_target, true, true, lane_changeable_routing_configuraton, hdmap_utils_ptr_);
       if (!entity_distance.has_value()) {
         THROW_SEMANTIC_ERROR(
           "Failed to get distance between entity and target lanelet pose. Check if the entity has "
