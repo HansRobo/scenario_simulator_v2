@@ -42,7 +42,15 @@ Interpreter::Interpreter(const rclcpp::NodeOptions & options)
   osc_path(""),
   output_directory("/tmp"),
   publish_empty_context(false),
-  record(false)
+  record(false),
+  evaluate_time_publisher(create_publisher<std_msgs::msg::Float64>(
+    "/simulation/interpreter/execution_times/evaluate", rclcpp::QoS(1).transient_local())),
+  update_time_publisher(create_publisher<std_msgs::msg::Float64>(
+    "/simulation/interpreter/execution_times/update", rclcpp::QoS(1).transient_local())),
+  output_time_publisher(create_publisher<std_msgs::msg::Float64>(
+    "/simulation/interpreter/execution_times/output", rclcpp::QoS(1).transient_local())),
+  total_time_publisher(create_publisher<std_msgs::msg::Float64>(
+    "/simulation/interpreter/execution_times/total", rclcpp::QoS(1).transient_local()))
 {
   DECLARE_PARAMETER(local_frame_rate);
   DECLARE_PARAMETER(local_real_time_factor);
@@ -177,6 +185,35 @@ auto Interpreter::engaged() const -> bool
     });
 }
 
+class ScopedTimer
+{
+public:
+  explicit ScopedTimer(double & output) : output(output) {}
+
+  ~ScopedTimer() { output = getElapsedSec(start); }
+
+  double elapsedSec() const { return getElapsedSec(start); }
+
+private:
+  std::chrono::time_point<std::chrono::high_resolution_clock> start =
+    std::chrono::high_resolution_clock::now();
+
+  template <typename TClock>
+  double getDiffSec(
+    std::chrono::time_point<TClock> start, std::chrono::time_point<TClock> end) const
+  {
+    return std::abs(std::chrono::duration<double>(end - start).count());
+  }
+
+  template <typename TClock>
+  double getElapsedSec(std::chrono::time_point<TClock> start) const
+  {
+    return getDiffSec(start, TClock::now());
+  }
+
+  double & output;
+};
+
 auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
 {
   auto evaluate_storyboard = [this]() {
@@ -187,23 +224,46 @@ auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
       },
       [this]() {
         withTimeoutHandler(defaultTimeoutHandler(), [this]() {
-          if (std::isnan(evaluateSimulationTime())) {
-            if (not waiting_for_engagement_to_be_completed and engageable()) {
-              engage();
-              waiting_for_engagement_to_be_completed = true;  // NOTE: DIRTY HACK!!!
-            } else if (engaged()) {
-              activateNonUserDefinedControllers();
-              waiting_for_engagement_to_be_completed = false;  // NOTE: DIRTY HACK!!!
+          double evauate_time, update_time, context_time;
+          {
+            ScopedTimer evaluate_timer(evauate_time);
+            if (std::isnan(evaluateSimulationTime())) {
+              if (not waiting_for_engagement_to_be_completed and engageable()) {
+                engage();
+                waiting_for_engagement_to_be_completed = true;  // NOTE: DIRTY HACK!!!
+              } else if (engaged()) {
+                activateNonUserDefinedControllers();
+                waiting_for_engagement_to_be_completed = false;  // NOTE: DIRTY HACK!!!
+              }
+            } else if (currentScenarioDefinition()) {
+              currentScenarioDefinition()->evaluate();
+            } else {
+              throw Error("No script evaluable.");
             }
-          } else if (currentScenarioDefinition()) {
-            currentScenarioDefinition()->evaluate();
-          } else {
-            throw Error("No script evaluable.");
+          }
+          {
+            ScopedTimer update_timer(update_time);
+            SimulatorCore::update();
+          }
+          {
+            ScopedTimer context_timer(context_time);
+            publishCurrentContext();
           }
 
-          SimulatorCore::update();
-
-          publishCurrentContext();
+          std_msgs::msg::Float64 msg;
+          msg.data = evauate_time * 1e6;
+          evaluate_time_publisher->publish(msg);
+          msg.data = update_time * 1e6;
+          update_time_publisher->publish(msg);
+          msg.data = context_time * 1e6;
+          output_time_publisher->publish(msg);
+          msg.data = (evauate_time + update_time) * 1e6;
+          total_time_publisher->publish(msg);
+          std::stringstream ss;
+          ss << "Evaluation time: " << evauate_time * 1e6
+             << " us, Update time: " << update_time * 1e6
+             << " us, Context time: " << context_time * 1e6 << " us";
+          std::cout << ss.str() << std::endl;
         });
       });
   };
@@ -241,6 +301,10 @@ auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
         execution_timer.clear();
 
         publisher_of_context->on_activate();
+        evaluate_time_publisher->on_activate();
+        update_time_publisher->on_activate();
+        output_time_publisher->on_activate();
+        total_time_publisher->on_activate();
 
         assert(publisher_of_context->is_activated());
 
@@ -311,6 +375,19 @@ auto Interpreter::reset() -> void
 
   if (publisher_of_context->is_activated()) {
     publisher_of_context->on_deactivate();
+  }
+
+  if (evaluate_time_publisher->is_activated()) {
+    evaluate_time_publisher->on_deactivate();
+  }
+  if (update_time_publisher->is_activated()) {
+    update_time_publisher->on_deactivate();
+  }
+  if (output_time_publisher->is_activated()) {
+    output_time_publisher->on_deactivate();
+  }
+  if (total_time_publisher->is_activated()) {
+    total_time_publisher->on_deactivate();
   }
 
   if (not has_parameter("initialize_duration")) {
