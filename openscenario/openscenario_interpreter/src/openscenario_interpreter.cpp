@@ -224,9 +224,9 @@ auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
       },
       [this]() {
         withTimeoutHandler(defaultTimeoutHandler(), [this]() {
-          double evauate_time, update_time, context_time;
+          double evaluate_time, update_time, context_time;
           {
-            ScopedTimer evaluate_timer(evauate_time);
+            ScopedTimer evaluate_timer(evaluate_time);
             if (std::isnan(evaluateSimulationTime())) {
               if (not waiting_for_engagement_to_be_completed and engageable()) {
                 engage();
@@ -251,16 +251,16 @@ auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
           }
 
           std_msgs::msg::Float64 msg;
-          msg.data = evauate_time * 1e6;
+          msg.data = evaluate_time * 1e6;
           evaluate_time_publisher->publish(msg);
           msg.data = update_time * 1e6;
           update_time_publisher->publish(msg);
           msg.data = context_time * 1e6;
           output_time_publisher->publish(msg);
-          msg.data = (evauate_time + update_time) * 1e6;
+          msg.data = (evaluate_time + update_time) * 1e6;
           total_time_publisher->publish(msg);
           std::stringstream ss;
-          ss << "Evaluation time: " << evauate_time * 1e6
+          ss << "Evaluation time: " << evaluate_time * 1e6
              << " us, Update time: " << update_time * 1e6
              << " us, Context time: " << context_time * 1e6 << " us";
           std::cout << ss.str() << std::endl;
