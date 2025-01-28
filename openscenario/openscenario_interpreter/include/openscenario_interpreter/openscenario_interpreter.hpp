@@ -33,6 +33,7 @@
 #include <scenario_simulator_exception/exception.hpp>
 #include <simple_junit/junit5.hpp>
 #include <std_msgs/msg/float64.hpp>
+#include <tier4_simulation_msgs/msg/user_defined_value.hpp>
 #include <utility>
 
 #define INTERPRETER_INFO_STREAM(...) \
@@ -53,13 +54,17 @@ class Interpreter : public rclcpp_lifecycle::LifecycleNode,
 
   const rclcpp_lifecycle::LifecyclePublisher<Context>::SharedPtr publisher_of_context;
 
-  rclcpp_lifecycle::LifecyclePublisher<std_msgs::msg::Float64>::SharedPtr evaluate_time_publisher;
+  rclcpp_lifecycle::LifecyclePublisher<tier4_simulation_msgs::msg::UserDefinedValue>::SharedPtr
+    evaluate_time_publisher;
 
-  rclcpp_lifecycle::LifecyclePublisher<std_msgs::msg::Float64>::SharedPtr update_time_publisher;
+  rclcpp_lifecycle::LifecyclePublisher<tier4_simulation_msgs::msg::UserDefinedValue>::SharedPtr
+    update_time_publisher;
 
-  rclcpp_lifecycle::LifecyclePublisher<std_msgs::msg::Float64>::SharedPtr output_time_publisher;
+  rclcpp_lifecycle::LifecyclePublisher<tier4_simulation_msgs::msg::UserDefinedValue>::SharedPtr
+    output_time_publisher;
 
-  rclcpp_lifecycle::LifecyclePublisher<std_msgs::msg::Float64>::SharedPtr total_time_publisher;
+  rclcpp_lifecycle::LifecyclePublisher<tier4_simulation_msgs::msg::UserDefinedValue>::SharedPtr
+    total_time_publisher;
 
   double local_frame_rate;
 
