@@ -15,6 +15,7 @@
 #ifndef CONCEALER__SUBSCRIBER_HPP_
 #define CONCEALER__SUBSCRIBER_HPP_
 
+#include <builtin_interfaces/msg/time.hpp>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 
@@ -27,6 +28,8 @@ struct Subscriber
 
   typename rclcpp::Subscription<Message>::SharedPtr subscription;
 
+  rclcpp::Publisher<builtin_interfaces::msg::Time>::SharedPtr time_publisher;
+
   auto operator()() const -> const auto & { return *std::atomic_load(&current_value); }
 
   template <typename Autoware, typename Callback>
@@ -36,10 +39,13 @@ struct Subscriber
   : subscription(autoware.template create_subscription<Message>(
       topic, quality_of_service,
       [this, callback](const typename Message::ConstSharedPtr & message) {
+        builtin_interfaces::msg::Time stamp = rclcpp::Clock().now();
         if (std::atomic_store(&current_value, message); current_value) {
           callback(*std::atomic_load(&current_value));
         }
-      }))
+        time_publisher->publish(stamp);
+      })),
+    time_publisher(autoware.template create_publisher<builtin_interfaces::msg::Time>("timing", 1))
   {
   }
 
@@ -47,9 +53,13 @@ struct Subscriber
   explicit Subscriber(
     const std::string & topic, const rclcpp::QoS & quality_of_service, Autoware & autoware)
   : subscription(autoware.template create_subscription<Message>(
-      topic, quality_of_service, [this](const typename Message::ConstSharedPtr & message) {
+      topic, quality_of_service,
+      [this](const typename Message::ConstSharedPtr & message) {
+        builtin_interfaces::msg::Time stamp = rclcpp::Clock().now();
         std::atomic_store(&current_value, message);
-      }))
+        time_publisher->publish(stamp);
+      })),
+    time_publisher(autoware.template create_publisher<builtin_interfaces::msg::Time>("timing", 1))
   {
   }
 };

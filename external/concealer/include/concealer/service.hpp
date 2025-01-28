@@ -20,6 +20,7 @@
 #include <concealer/member_detector.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <scenario_simulator_exception/exception.hpp>
+#include <std_msgs/msg/float64.hpp>
 #include <string>
 #include <tier4_external_api_msgs/msg/response_status.hpp>
 #include <tier4_rtc_msgs/srv/auto_mode_with_module.hpp>
@@ -38,6 +39,8 @@ class Service
 
   rclcpp::WallRate validation_rate;
 
+  rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr latency_publisher;
+
 public:
   template <typename Node>
   explicit Service(
@@ -48,6 +51,8 @@ public:
     client(node.template create_client<T>(service_name, rmw_qos_profile_default)),
     validation_rate(validation_interval)
   {
+    std::string latency_topic = service_name + "/latency";
+    latency_publisher = node.template create_publisher<std_msgs::msg::Float64>(latency_topic, 10);
   }
 
   auto operator()(const typename T::Request::SharedPtr & request, std::size_t attempts_count)
@@ -59,8 +64,17 @@ public:
     }
 
     auto send = [this](const auto & request) {
+      auto start_time = std::chrono::high_resolution_clock::now();
+
       if (auto future = client->async_send_request(request);
           future.wait_for(validation_rate.period()) == std::future_status::ready) {
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration<double>(end_time - start_time);
+        auto latency_msg = std::make_unique<std_msgs::msg::Float64>();
+        latency_msg->data = duration.count();
+        latency_publisher->publish(*latency_msg);
+        RCLCPP_INFO_STREAM(logger, service_name << " took " << duration.count() << " seconds.");
+
         return std::optional<typename rclcpp::Client<T>::SharedFuture>(future);
       } else {
         RCLCPP_ERROR_STREAM(logger, service_name << " service request has timed out.");
