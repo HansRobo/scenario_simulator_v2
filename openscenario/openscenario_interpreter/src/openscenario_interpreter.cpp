@@ -24,6 +24,7 @@
 #include <openscenario_interpreter/syntax/scenario_object.hpp>
 #include <openscenario_interpreter/syntax/speed_condition.hpp>
 #include <openscenario_interpreter/utility/overload.hpp>
+#include <openscenario_interpreter/utility/scoped_elapsed_time_recorder.hpp>
 #include <status_monitor/status_monitor.hpp>
 #include <traffic_simulator/data_type/lanelet_pose.hpp>
 
@@ -184,35 +185,6 @@ auto Interpreter::engaged() const -> bool
     });
 }
 
-class ScopedTimer
-{
-public:
-  explicit ScopedTimer(double & output) : output(output) {}
-
-  ~ScopedTimer() { output = getElapsedSec(start); }
-
-  double elapsedSec() const { return getElapsedSec(start); }
-
-private:
-  std::chrono::time_point<std::chrono::high_resolution_clock> start =
-    std::chrono::high_resolution_clock::now();
-
-  template <typename TClock>
-  double getDiffSec(
-    std::chrono::time_point<TClock> start, std::chrono::time_point<TClock> end) const
-  {
-    return std::abs(std::chrono::duration<double>(end - start).count());
-  }
-
-  template <typename TClock>
-  double getElapsedSec(std::chrono::time_point<TClock> start) const
-  {
-    return getDiffSec(start, TClock::now());
-  }
-
-  double & output;
-};
-
 auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
 {
   auto evaluate_storyboard = [this]() {
@@ -225,7 +197,7 @@ auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
         withTimeoutHandler(defaultTimeoutHandler(), [this]() {
           double evaluate_time, update_time, context_time;
           {
-            ScopedTimer evaluate_timer(evaluate_time);
+            ScopedElapsedTimeRecorder evaluate_time_recorder(evaluate_time);
             if (std::isnan(evaluateSimulationTime())) {
               if (not waiting_for_engagement_to_be_completed and engageable()) {
                 engage();
@@ -241,11 +213,11 @@ auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
             }
           }
           {
-            ScopedTimer update_timer(update_time);
+            ScopedElapsedTimeRecorder update_time_recorder(update_time);
             SimulatorCore::update();
           }
           {
-            ScopedTimer context_timer(context_time);
+            ScopedElapsedTimeRecorder context_time_recorder(context_time);
             publishCurrentContext();
           }
 
