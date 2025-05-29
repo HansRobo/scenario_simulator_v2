@@ -116,7 +116,7 @@ runs:
           -d baseline.xml \
           -d current.xml \
           -headers-only \
-          -show-retval || true
+          -show-retval -gen -build -run || true
         
         # 結果解析
         REPORT_DIR="compat_reports/${{ inputs.library-name }}"
