@@ -113,8 +113,8 @@ runs:
         
         api-sanity-checker \
           -l "${{ inputs.library-name }}" \
-          -d1 baseline.xml \
-          -d2 current.xml \
+          -d baseline.xml \
+          -d current.xml \
           -headers-only \
           -report-format html \
           -show-retval || true
