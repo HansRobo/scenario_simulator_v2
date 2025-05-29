@@ -52,8 +52,22 @@ runs:
         git archive origin/${{ inputs.base-branch }} | tar -x -C baseline_headers/ || \
           git archive ${{ inputs.base-branch }} | tar -x -C baseline_headers/
         
-        # 現在のヘッダーをコピー
-        cp -r . current_headers/
+        # 現在のワークスペースをコピー（安全な方法）
+        if command -v rsync >/dev/null 2>&1; then
+          # rsyncが利用可能な場合
+          rsync -av --include='*/' --include='*.h' --include='*.hpp' --include='*.hxx' \
+                --exclude='*' --exclude='.git/' --exclude='current_headers/' --exclude='baseline_headers/' \
+                ./ current_headers/
+        else
+          # rsyncが利用できない場合はfindとcpを使用
+          find . -maxdepth 10 \( -name "*.h" -o -name "*.hpp" -o -name "*.hxx" \) \
+                 -not -path "./current_headers/*" -not -path "./baseline_headers/*" \
+                 -not -path "./.git/*" | while read file; do
+            target_dir="current_headers/$(dirname "$file")"
+            mkdir -p "$target_dir"
+            cp "$file" "current_headers/$file"
+          done
+        fi
         
     - name: Create descriptors
       shell: bash
