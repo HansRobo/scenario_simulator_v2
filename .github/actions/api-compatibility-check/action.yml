@@ -116,7 +116,6 @@ runs:
           -d baseline.xml \
           -d current.xml \
           -headers-only \
-          -report-format html \
           -show-retval || true
         
         # 結果解析
