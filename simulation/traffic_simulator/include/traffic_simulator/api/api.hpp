@@ -100,7 +100,7 @@ public:
     return common::getParameter<ParameterT>(node_parameters_, std::forward<Ts>(xs)...);
   }
 
-  auto init() -> bool;
+  auto init(const bool skip) -> bool;
 
   auto setVerbose(const bool verbose) -> void;
 
