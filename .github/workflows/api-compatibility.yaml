@@ -2,9 +2,6 @@ name: API Compatibility Check
 
 on:
   pull_request:
-    paths:
-      - '**/*.h'
-      - '**/*.hpp'
 
 jobs:
   api-compatibility:
@@ -44,7 +41,7 @@ jobs:
           exit 1
         elif [ "${{ steps.api_check.outputs.compatible }}" = "error" ]; then
           echo "⚠️ API compatibility check had errors (may be OK for new projects)"
-          exit 0
+          exit 1 # Ensure this is changed
         else
           echo "✅ API compatibility check passed"
           exit 0

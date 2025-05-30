@@ -60,50 +60,92 @@ runs:
                 ./ current_headers/
         else
           # rsyncが利用できない場合はfindとcpを使用
-          find . -maxdepth 10 \( -name "*.h" -o -name "*.hpp" -o -name "*.hxx" \) \
+          # rsyncが利用できない場合はfindとcpを使用
+          find . \( -name "*.h" -o -name "*.hpp" -o -name "*.hxx" \) \
                  -not -path "./current_headers/*" -not -path "./baseline_headers/*" \
-                 -not -path "./.git/*" | while read file; do
-            target_dir="current_headers/$(dirname "$file")"
-            mkdir -p "$target_dir"
-            cp "$file" "current_headers/$file"
+                 -not -path "./.git/*" -print0 | while IFS= read -r -d $'\0' file; do
+            # Remove leading './' if present
+            cleaned_file=$(echo "$file" | sed 's|^\./||')
+            target_file="current_headers/$cleaned_file"
+            mkdir -p "$(dirname "$target_file")"
+            cp "$file" "$target_file"
           done
         fi
         
     - name: Create descriptors
       shell: bash
       run: |
-        # skip-patternsを配列に変換
-        IFS=',' read -ra SKIP_PATTERNS <<< "${{ inputs.skip-patterns }}"
+        # --- Helper for GCC options ---
+        GCC_OPTIONS_FORMATTED=$(echo "${{ inputs.gcc-options }}" | tr ' ' '\n')
+
+        # --- Prepare baseline.xml ---
+        # Process include-paths for baseline
+        IFS=',' read -ra INCLUDE_PATHS_ARRAY <<< "${{ inputs.include-paths }}"
+        INCLUDE_XML_BASELINE=""
+        for path_item in "${INCLUDE_PATHS_ARRAY[@]}"; do
+          if [ -n "$path_item" ]; then # Ensure path_item is not empty
+            INCLUDE_XML_BASELINE="${INCLUDE_XML_BASELINE}\$(pwd)/baseline_headers/$path_item\n"
+          fi
+        done
+        INCLUDE_XML_BASELINE="${INCLUDE_XML_BASELINE}/usr/include" # Add default /usr/include
+
+        # Process skip-patterns for baseline (same for current)
+        IFS=',' read -ra SKIP_PATTERNS_ARRAY <<< "${{ inputs.skip-patterns }}"
         SKIP_XML=""
-        for pattern in "${SKIP_PATTERNS[@]}"; do
-          SKIP_XML="$SKIP_XML<n>$pattern</n>"
+        for pattern in "${SKIP_PATTERNS_ARRAY[@]}"; do
+          if [ -n "$pattern" ]; then # Ensure pattern is not empty
+            SKIP_XML="${SKIP_XML}$pattern\n"
+          fi
         done
+        # Remove trailing newline from SKIP_XML if it exists, otherwise api-sanity-checker might complain about an empty line
+        SKIP_XML=$(echo -e "$SKIP_XML" | sed '/^$/d')
         
-        # include-pathsを処理
-        IFS=',' read -ra INCLUDE_PATHS <<< "${{ inputs.include-paths }}"
-        INCLUDE_XML=""
-        for path in "${INCLUDE_PATHS[@]}"; do
-          INCLUDE_XML="$INCLUDE_XML<path>\$(pwd)/baseline_headers/$path</path>"
-        done
-        
-        # baseline.xml生成
+        echo "Generating baseline.xml..."
         cat > baseline.xml << EOF
         <?xml version="1.0" encoding="UTF-8"?>
-        <descriptor>
-            <version>baseline</version>
-            <headers>\$(pwd)/baseline_headers/${{ inputs.include-paths }}</headers>
-            <include_paths>
-                $INCLUDE_XML
-                <path>/usr/include</path>
-            </include_paths>
-            <gcc_options>${{ inputs.gcc-options }}</gcc_options>
-            <skip_headers>$SKIP_XML</skip_headers>
-        </descriptor>
+        <version>baseline</version>
+        <headers>\$(pwd)/baseline_headers/${{ inputs.include-paths }}</headers>
+        <include_paths>
+        $(echo -e "$INCLUDE_XML_BASELINE")
+        </include_paths>
+        <gcc_options>
+        $GCC_OPTIONS_FORMATTED
+        </gcc_options>
+        <skip_headers>
+        $(echo -e "$SKIP_XML")
+        </skip_headers>
+        EOF
+
+        # --- Prepare current.xml ---
+        # Process include-paths for current
+        INCLUDE_XML_CURRENT=""
+        for path_item in "${INCLUDE_PATHS_ARRAY[@]}"; do
+          if [ -n "$path_item" ]; then # Ensure path_item is not empty
+            INCLUDE_XML_CURRENT="${INCLUDE_XML_CURRENT}\$(pwd)/current_headers/$path_item\n"
+          fi
+        done
+        INCLUDE_XML_CURRENT="${INCLUDE_XML_CURRENT}/usr/include" # Add default /usr/include
+
+        echo "Generating current.xml..."
+        cat > current.xml << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <version>current</version>
+        <headers>\$(pwd)/current_headers/${{ inputs.include-paths }}</headers>
+        <include_paths>
+        $(echo -e "$INCLUDE_XML_CURRENT")
+        </include_paths>
+        <gcc_options>
+        $GCC_OPTIONS_FORMATTED
+        </gcc_options>
+        <skip_headers>
+        $(echo -e "$SKIP_XML")
+        </skip_headers>
         EOF
         
-        # current.xml生成  
-        sed 's/baseline_headers/current_headers/g' baseline.xml > current.xml
-        sed -i 's/<version>baseline</<version>current</g' current.xml
+        echo "baseline.xml content:"
+        cat baseline.xml
+        echo "current.xml content:"
+        cat current.xml
         
     - name: Run API compatibility check
       id: check
