@@ -97,7 +97,7 @@ public:
 
   ~AutowareUniverse();
 
-  auto rethrow() -> void;
+  auto rethrow(bool) -> void;
 
   auto getVehicleCommand() const -> std::tuple<double, double, double, double, int>;
 

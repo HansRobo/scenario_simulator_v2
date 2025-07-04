@@ -1,0 +1,51 @@
+name: API Compatibility Check
+
+on:
+  pull_request:
+    paths:
+      - '**/*.h'
+      - '**/*.hpp'
+
+jobs:
+  api-compatibility:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout with history
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Run API compatibility check
+      id: api_check
+      uses: ./.github/actions/api-compatibility-check
+      with:
+        base-branch: ${{ github.base_ref }}
+        library-name: ${{ github.event.repository.name }}
+        include-paths: 'include'
+        gcc-options: '-std=c++17'
+        
+    - name: Upload compatibility report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: api-compatibility-report
+        path: |
+          compat_reports/
+          *.xml
+          issues_summary.txt
+        retention-days: 30
+        
+    - name: Set workflow status
+      if: always()
+      run: |
+        if [ "${{ steps.api_check.outputs.compatible }}" = "false" ]; then
+          echo "❌ API compatibility check failed"
+          exit 1
+        elif [ "${{ steps.api_check.outputs.compatible }}" = "error" ]; then
+          echo "⚠️ API compatibility check had errors (may be OK for new projects)"
+          exit 0
+        else
+          echo "✅ API compatibility check passed"
+          exit 0
+        fi

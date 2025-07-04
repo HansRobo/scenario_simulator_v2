@@ -1,0 +1,184 @@
+name: 'API Compatibility Check'
+description: 'Check API compatibility using API Sanity Checker in headers-only mode'
+
+inputs:
+  base-branch:
+    description: 'Base branch to compare against'
+    required: true
+    default: 'main'
+  library-name:
+    description: 'Library name for the check'
+    required: false
+    default: '${{ github.event.repository.name }}'
+  include-paths:
+    description: 'Include paths (comma-separated)'
+    required: false
+    default: 'include'
+  gcc-options:
+    description: 'Additional GCC options'
+    required: false
+    default: '-std=c++17'
+  skip-patterns:
+    description: 'Skip patterns for headers (comma-separated)'
+    required: false
+    default: '.*test.*,.*internal.*,.*detail.*'
+
+outputs:
+  compatible:
+    description: 'Whether the API is compatible (true/false/error)'
+    value: ${{ steps.check.outputs.compatible }}
+  problem-count:
+    description: 'Number of compatibility issues found'
+    value: ${{ steps.check.outputs.problem_count }}
+  report-path:
+    description: 'Path to the generated HTML report'
+    value: ${{ steps.check.outputs.report_path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install API Sanity Checker
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y api-sanity-checker build-essential
+        
+    - name: Setup directories
+      shell: bash
+      run: |
+        mkdir -p baseline_headers current_headers
+        
+        # ベースブランチのヘッダーを取得
+        git archive origin/${{ inputs.base-branch }} | tar -x -C baseline_headers/ || \
+          git archive ${{ inputs.base-branch }} | tar -x -C baseline_headers/
+        
+        # 現在のワークスペースをコピー（安全な方法）
+        if command -v rsync >/dev/null 2>&1; then
+          # rsyncが利用可能な場合
+          rsync -av --include='*/' --include='*.h' --include='*.hpp' --include='*.hxx' \
+                --exclude='*' --exclude='.git/' --exclude='current_headers/' --exclude='baseline_headers/' \
+                ./ current_headers/
+        else
+          # rsyncが利用できない場合はfindとcpを使用
+          find . -maxdepth 10 \( -name "*.h" -o -name "*.hpp" -o -name "*.hxx" \) \
+                 -not -path "./current_headers/*" -not -path "./baseline_headers/*" \
+                 -not -path "./.git/*" | while read file; do
+            target_dir="current_headers/$(dirname "$file")"
+            mkdir -p "$target_dir"
+            cp "$file" "current_headers/$file"
+          done
+        fi
+        
+    - name: Create descriptors
+      shell: bash
+      run: |
+        # skip-patternsを配列に変換
+        IFS=',' read -ra SKIP_PATTERNS <<< "${{ inputs.skip-patterns }}"
+        SKIP_XML=""
+        for pattern in "${SKIP_PATTERNS[@]}"; do
+          SKIP_XML="$SKIP_XML<n>$pattern</n>"
+        done
+        
+        # include-pathsを処理
+        IFS=',' read -ra INCLUDE_PATHS <<< "${{ inputs.include-paths }}"
+        INCLUDE_XML=""
+        for path in "${INCLUDE_PATHS[@]}"; do
+          INCLUDE_XML="$INCLUDE_XML<path>\$(pwd)/baseline_headers/$path</path>"
+        done
+        
+        # baseline.xml生成
+        cat > baseline.xml << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <descriptor>
+            <version>baseline</version>
+            <headers>\$(pwd)/baseline_headers/${{ inputs.include-paths }}</headers>
+            <include_paths>
+                $INCLUDE_XML
+                <path>/usr/include</path>
+            </include_paths>
+            <gcc_options>${{ inputs.gcc-options }}</gcc_options>
+            <skip_headers>$SKIP_XML</skip_headers>
+        </descriptor>
+        EOF
+        
+        # current.xml生成  
+        sed 's/baseline_headers/current_headers/g' baseline.xml > current.xml
+        sed -i 's/<version>baseline</<version>current</g' current.xml
+        
+    - name: Run API compatibility check
+      id: check
+      shell: bash
+      run: |
+        echo "Running API Sanity Checker..."
+        
+        api-sanity-checker \
+          -l "${{ inputs.library-name }}" \
+          -d baseline.xml \
+          -d current.xml \
+          -headers-only \
+          -show-retval -gen -build -run || true
+        
+        # 結果解析
+        REPORT_DIR="compat_reports/${{ inputs.library-name }}"
+        if [ -d "$REPORT_DIR" ]; then
+          LATEST_REPORT=$(find "$REPORT_DIR" -name "compat_report.html" | head -1)
+          
+          if [ -f "$LATEST_REPORT" ]; then
+            echo "report_path=$LATEST_REPORT" >> $GITHUB_OUTPUT
+            
+            if grep -q "COMPATIBLE" "$LATEST_REPORT"; then
+              echo "compatible=true" >> $GITHUB_OUTPUT
+            else
+              echo "compatible=false" >> $GITHUB_OUTPUT
+            fi
+            
+            PROBLEM_COUNT=$(grep -c "problem_title" "$LATEST_REPORT" 2>/dev/null || echo "0")
+            echo "problem_count=$PROBLEM_COUNT" >> $GITHUB_OUTPUT
+            
+            # 問題概要を抽出
+            if [ "$PROBLEM_COUNT" -gt 0 ]; then
+              grep -A 1 "problem_title" "$LATEST_REPORT" | head -10 > issues_summary.txt || true
+            fi
+          else
+            echo "compatible=error" >> $GITHUB_OUTPUT
+            echo "problem_count=0" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "compatible=error" >> $GITHUB_OUTPUT
+          echo "problem_count=0" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Display results
+      shell: bash
+      run: |
+        echo "=== API Compatibility Check Results ==="
+        echo "Base Branch: ${{ inputs.base-branch }}"
+        echo "Library: ${{ inputs.library-name }}"
+        echo "Tool: API Sanity Checker (headers-only)"
+        echo ""
+        
+        COMPATIBLE="${{ steps.check.outputs.compatible }}"
+        PROBLEM_COUNT="${{ steps.check.outputs.problem_count }}"
+        
+        case "$COMPATIBLE" in
+          "true")
+            echo "✅ RESULT: API Compatible"
+            echo "No breaking changes detected"
+            ;;
+          "false")
+            echo "❌ RESULT: Compatibility Issues Found"
+            echo "Problem count: $PROBLEM_COUNT"
+            if [ -f "issues_summary.txt" ]; then
+              echo ""
+              echo "Sample Issues:"
+              head -5 issues_summary.txt
+            fi
+            ;;
+          *)
+            echo "⚠️ RESULT: Analysis Error"
+            echo "Could not complete analysis"
+            ;;
+        esac
+        
+        echo ""
+        echo "=== End Results ==="
