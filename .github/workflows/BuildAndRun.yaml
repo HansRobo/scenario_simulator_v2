@@ -36,7 +36,7 @@ jobs:
         rosdistro: [jazzy]
         runs_on: [self-hosted]
         branch: [fix/build_error_on_noble, master]
-        cmake_build_type: [Release] # Debug build type is currently unavailable. @TODO Fix problem and add Debug build.
+        cmake_build_type: [Release]
     steps:
       - name: Setup workspace
         run: mkdir -p src/scenario_simulator_v2
@@ -47,23 +47,6 @@ jobs:
           path: src/scenario_simulator_v2
           repository: tier4/scenario_simulator_v2
           ref: ${{ matrix.branch }}
-
-      - uses: actions/checkout@v4
-        with:
-          repository: RobotecAI/scenario_simulator_v2_scenarios
-          path: src/scenario_simulator_v2_scenarios
-      
-      - name: Cache apt and rosdep
-        id: cache-apt-rosdep
-        uses: actions/cache@v4
-        with:
-          path: |
-            /var/cache/apt/archives
-            /var/lib/apt/lists
-            /etc/ros/rosdep
-          key: ${{ runner.os }}-ros-${{ matrix.rosdistro }}-apt-${{ hashFiles('**/package.xml', '**/dependency_*.repos') }}
-          restore-keys: |
-            ${{ runner.os }}-ros-${{ matrix.rosdistro }}-apt-
   
       - name: Install dependencies
         run: |
@@ -73,20 +56,17 @@ jobs:
         run: |
           apt-get update
           apt-get install -y python3-pip python3-colcon-lcov-result lcov unzip gcovr libunwind-dev
-          rosdep update --include-eol-distros
-          rosdep install -iy --from-paths src --rosdistro ${{ matrix.rosdistro }}
+          rosdep update
+          DEBIAN_FRONTEND=noninteractive rosdep install -iy --from-paths src --rosdistro ${{ matrix.rosdistro }}
           colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mixin-repository/master/index.yaml
           colcon mixin update default
-          df -h
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/*
-          df -h
         shell: bash
 
       - name: Build
         run: |
           source /opt/ros/${{ matrix.rosdistro }}/setup.bash
           colcon build --symlink-install \
+          --event-handlers console_cohesion+ \
           --cmake-args \
             -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
             -DBUILD_CPP_MOCK_SCENARIOS=ON \
@@ -99,8 +79,7 @@ jobs:
         # ARM testing is currently broken
         if: matrix.runs_on != 'ubuntu-22.04-arm'
         run: |
-          source /opt/ros/${{ matrix.rosdistro }}/setup.bash
-          source install/local_setup.bash
+          source install/setup.bash
           colcon test --event-handlers console_cohesion+ --packages-select ${{ steps.list_packages.outputs.package_list }}
           colcon lcov-result --packages-select ${{ steps.list_packages.outputs.package_list }}
         shell: bash
