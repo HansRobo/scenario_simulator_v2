@@ -16,6 +16,8 @@
 #include <openscenario_interpreter/reader/element.hpp>
 #include <openscenario_interpreter/simulator_core.hpp>
 #include <openscenario_interpreter/syntax/traffic_signal_controller.hpp>
+#include <set>
+#include <unordered_map>
 
 namespace openscenario_interpreter
 {
@@ -71,6 +73,8 @@ auto TrafficSignalController::changePhaseTo(std::list<Phase>::iterator next) -> 
   current_phase_started_at = evaluateSimulationTime();
   current_phase = next;
 
+  updatePredictions();
+
   return current_phase != std::end(phases) ? (*current_phase).evaluate() : unspecified;
 }
 
@@ -108,6 +112,64 @@ auto TrafficSignalController::evaluate() -> Object
   }
 }
 
+auto TrafficSignalController::updatePredictions() -> void
+{
+  if (current_phase != std::end(phases)) {
+    clearV2ITrafficLightsStatePrediction();
+
+    std::unordered_map<lanelet::Id, std::vector<std::tuple<double, std::string>>> predictions_by_id;
+    /*
+    NOTE:
+      This parameter was set with the help of developers familiar with the implementation
+      of ROS driver nodes for V2I traffic lights.
+      However, the specifications, including this parameter, may change in the future.
+   */
+    constexpr size_t OUTPUT_PREDICTION_SIZE = 6;
+
+    const auto current_time = evaluateSimulationTime();
+    const auto current_phase_elapsed = current_time - current_phase_started_at;
+    const double remaining_time_in_current_phase =
+      (*current_phase).duration - current_phase_elapsed;
+    double accumulated_time = 0.0;
+
+    auto phase_iter = current_phase;
+    std::size_t processed_phases_number = 0;
+
+    auto process_phase = [&](const auto & phase, const double phase_time_seconds) -> bool {
+      accumulated_time += phase_time_seconds;
+      bool is_added = false;
+      for (const auto & traffic_signal_state : (*phase).traffic_signal_states) {
+        if (
+          traffic_signal_state.trafficSignalType() == TrafficSignalState::TrafficSignalType::v2i) {
+          is_added = true;
+          predictions_by_id[traffic_signal_state.id()].emplace_back(
+            accumulated_time, traffic_signal_state.state);
+        }
+      }
+      return is_added;
+    };
+
+    if (process_phase(phase_iter, remaining_time_in_current_phase)) {
+      ++processed_phases_number;
+    }
+
+    while (processed_phases_number < OUTPUT_PREDICTION_SIZE) {
+      ++phase_iter;
+      if (processed_phases_number == 0 && accumulated_time > cycleTime()) {
+        break;
+      } else if (process_phase(phase_iter, (*phase_iter).duration)) {
+        ++processed_phases_number;
+      }
+    }
+
+    for (const auto & [lanelet_id, predictions] : predictions_by_id) {
+      for (const auto & [time_offset, state] : predictions) {
+        setV2ITrafficLightsStatePrediction(lanelet_id, state, time_offset);
+      }
+    }
+  }
+}
+
 auto TrafficSignalController::notifyBegin() -> void
 {
   change_to_begin_time = evaluateSimulationTime() + delay;
@@ -125,5 +187,6 @@ auto TrafficSignalController::shouldChangePhaseToBegin() -> bool
     return false;
   }
 }
+
 }  // namespace syntax
 }  // namespace openscenario_interpreter
