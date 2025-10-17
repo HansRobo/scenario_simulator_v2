@@ -26,7 +26,7 @@ jobs:
     name: BuildAndRun
     runs-on: ${{ matrix.runs_on }}
     container:
-      image: ubuntu:24.04
+      image: ros:${{ matrix.rosdistro }}
     timeout-minutes: 180
     env:
       DEBIAN_FRONTEND: noninteractive
