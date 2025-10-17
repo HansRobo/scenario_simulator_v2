@@ -25,6 +25,8 @@ jobs:
   job1:
     name: BuildAndRun
     runs-on: ${{ matrix.runs_on }}
+    container:
+      image: ubuntu:24.04
     timeout-minutes: 180
     env:
       DEBIAN_FRONTEND: noninteractive
