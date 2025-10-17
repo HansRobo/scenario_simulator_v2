@@ -36,11 +36,6 @@ jobs:
         branch: [fix/build_error_on_noble, master]
         cmake_build_type: [Release] # Debug build type is currently unavailable. @TODO Fix problem and add Debug build.
     steps:
-      - name: free disk
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-
       - name: Suppress warnings
         run: git config --global --add safe.directory '*'
 
