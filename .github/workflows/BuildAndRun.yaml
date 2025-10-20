@@ -87,6 +87,7 @@ jobs:
 
       - name: Show test result
         if: always()
+        continue-on-error: true
         run: |
           source /opt/ros/${{ matrix.rosdistro }}/setup.bash
           source install/local_setup.bash
