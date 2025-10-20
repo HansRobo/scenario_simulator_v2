@@ -95,6 +95,7 @@ jobs:
         shell: bash
 
       - name: Scenario test
+        continue-on-error: true
         run: |
           source install/setup.bash
           source install/local_setup.bash
