@@ -254,7 +254,7 @@ auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
                 key == "regex" && (value.IsScalar() or (value.IsSequence() && value.size() > 0))) {
                 additional_all_option_needed = false;
               } else if(
-                key == "topics" && (value.IsScalar() or (value.IsSequence() && value.size() > 0)) {
+                key == "topics" && (value.IsScalar() or (value.IsSequence() && value.size() > 0))) {
                 additional_all_option_needed = false;
               }
 
