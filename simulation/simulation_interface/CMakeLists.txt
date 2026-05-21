@@ -20,8 +20,22 @@ find_package(ament_cmake_auto REQUIRED)
 find_package(Boost REQUIRED thread)
 find_package(cppzmq QUIET)
 find_package(rclcpp REQUIRED)
+include(FetchContent)
 include(FindProtobuf REQUIRED)
 ament_auto_find_build_dependencies()
+
+FetchContent_Declare(open_simulation_interface
+  GIT_REPOSITORY https://github.com/OpenSimulationInterface/open-simulation-interface.git
+  GIT_TAG        v3.7.0)
+
+FetchContent_MakeAvailable(open_simulation_interface)
+
+FetchContent_GetProperties(open_simulation_interface)
+
+if(NOT open_simulation_interface_POPULATED)
+  FetchContent_Populate(open_simulation_interface)
+  add_subdirectory(${open_simulation_interface_SOURCE_DIR} ${open_simulation_interface_BINARY_DIR})
+endif()
 
 set(PROTO_FILES
   "proto/autoware_control_msgs.proto"
@@ -62,6 +76,7 @@ ament_auto_add_library(simulation_interface SHARED
 )
 target_link_libraries(simulation_interface
   ${PROTOBUF_LIBRARY}
+  open_simulation_interface
   pthread
   sodium
   zmq
@@ -77,6 +92,7 @@ install(TARGETS simulation_interface
 
 install(
   DIRECTORY ${CMAKE_BINARY_DIR}/proto/
+            ${open_simulation_interface_BINARY_DIR}/
   DESTINATION include/
 )
 
