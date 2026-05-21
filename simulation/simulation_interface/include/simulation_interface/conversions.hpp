@@ -34,6 +34,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <iostream>
+#include <osi_common.pb.h>
 #include <rosgraph_msgs/msg/clock.hpp>
 #include <simulation_interface/constants.hpp>
 #include <std_msgs/msg/header.hpp>
@@ -280,6 +281,12 @@ auto toProtobufMessage(const traffic_simulator_msgs::msg::PolylineTrajectory &)
 
 auto toROS2Message(const traffic_simulator_msgs::PolylineTrajectory &)
   -> traffic_simulator_msgs::msg::PolylineTrajectory;
+
+template <typename T, typename... Ts>
+auto to(Ts&&...) -> T;
+
+template <>
+auto to<osi3::Timestamp>(const builtin_interfaces::msg::Time &) -> osi3::Timestamp;
 }  // namespace simulation_interface
 
 #endif  // SIMULATION_INTERFACE__CONVERSIONS_HPP_
