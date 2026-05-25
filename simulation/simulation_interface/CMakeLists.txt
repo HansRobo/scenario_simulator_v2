@@ -24,6 +24,8 @@ include(FetchContent)
 include(FindProtobuf REQUIRED)
 ament_auto_find_build_dependencies()
 
+# lint_cmake: -readability/wonkycase
+
 FetchContent_Declare(open_simulation_interface
   GIT_REPOSITORY https://github.com/OpenSimulationInterface/open-simulation-interface.git
   GIT_TAG        v3.7.0)

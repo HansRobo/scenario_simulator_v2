@@ -283,7 +283,7 @@ auto toROS2Message(const traffic_simulator_msgs::PolylineTrajectory &)
   -> traffic_simulator_msgs::msg::PolylineTrajectory;
 
 template <typename T, typename... Ts>
-auto to(Ts &&...) -> T;
+auto to(Ts &&...) -> T = delete;
 
 template <>
 auto to<osi3::Timestamp>(const builtin_interfaces::msg::Time &) -> osi3::Timestamp;
