@@ -24,6 +24,7 @@ include(FetchContent)
 include(FindProtobuf REQUIRED)
 ament_auto_find_build_dependencies()
 
+# cSpell:ignore wonkycase
 # lint_cmake: -readability/wonkycase
 
 FetchContent_Declare(open_simulation_interface
