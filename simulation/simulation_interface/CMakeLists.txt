@@ -95,9 +95,15 @@ install(TARGETS simulation_interface
 
 install(
   DIRECTORY ${CMAKE_BINARY_DIR}/proto/
-            ${open_simulation_interface_BINARY_DIR}/
+  DIRECTORY ${open_simulation_interface_BINARY_DIR}/include/osi3/
   DESTINATION include/
 )
+
+install(
+  DIRECTORY ${open_simulation_interface_BINARY_DIR}/
+  DESTINATION lib
+  FILES_MATCHING REGEX ".*\\.so.*"
+  )
 
 install(
   DIRECTORY launch
