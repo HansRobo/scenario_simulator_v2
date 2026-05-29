@@ -29,7 +29,7 @@ ament_auto_find_build_dependencies()
 
 FetchContent_Declare(open_simulation_interface
   GIT_REPOSITORY https://github.com/OpenSimulationInterface/open-simulation-interface.git
-  GIT_TAG        v3.7.0)
+  GIT_TAG        v3.8.0)
 
 FetchContent_MakeAvailable(open_simulation_interface)
 
@@ -95,15 +95,14 @@ install(TARGETS simulation_interface
 
 install(
   DIRECTORY ${CMAKE_BINARY_DIR}/proto/
-  DIRECTORY ${open_simulation_interface_BINARY_DIR}/include/osi3/
+            ${open_simulation_interface_BINARY_DIR}/include/osi3/
   DESTINATION include/
 )
 
 install(
   DIRECTORY ${open_simulation_interface_BINARY_DIR}/
   DESTINATION lib
-  FILES_MATCHING REGEX ".*\\.so.*"
-  )
+  FILES_MATCHING REGEX ".*\\.so.*")
 
 install(
   DIRECTORY launch
