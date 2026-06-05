@@ -27,17 +27,13 @@ ament_auto_find_build_dependencies()
 # cSpell:ignore wonkycase
 # lint_cmake: -readability/wonkycase
 
-FetchContent_Declare(open_simulation_interface
-  GIT_REPOSITORY https://github.com/OpenSimulationInterface/open-simulation-interface.git
-  GIT_TAG        v3.8.0)
+FetchContent_Declare(osi-cpp GIT_REPOSITORY https://github.com/OpenSimulationInterface/osi-cpp.git GIT_TAG v3.8.0)
+FetchContent_MakeAvailable(osi-cpp)
+FetchContent_GetProperties(osi-cpp)
 
-FetchContent_MakeAvailable(open_simulation_interface)
-
-FetchContent_GetProperties(open_simulation_interface)
-
-if(NOT open_simulation_interface_POPULATED)
-  FetchContent_Populate(open_simulation_interface)
-  add_subdirectory(${open_simulation_interface_SOURCE_DIR} ${open_simulation_interface_BINARY_DIR})
+if(NOT osi-cpp_POPULATED)
+  FetchContent_Populate(osi-cpp)
+  add_subdirectory(${osi-cpp_SOURCE_DIR} ${osi-cpp_BINARY_DIR})
 endif()
 
 set(PROTO_FILES
@@ -98,11 +94,6 @@ install(
             ${open_simulation_interface_BINARY_DIR}/include/osi3/
   DESTINATION include/
 )
-
-install(
-  DIRECTORY ${open_simulation_interface_BINARY_DIR}/
-  DESTINATION lib
-  FILES_MATCHING REGEX ".*\\.so.*")
 
 install(
   DIRECTORY launch
