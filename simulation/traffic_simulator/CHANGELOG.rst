@@ -2,6 +2,9 @@
 Changelog for package traffic_simulator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+25.0.21 (2026-06-08)
+--------------------
+
 25.0.20 (2026-05-07)
 --------------------
 * Merge pull request `#1839 <https://github.com/tier4/scenario_simulator_v2/issues/1839>`_ from mitsudome-r/ignore-unused-local-typedefs
