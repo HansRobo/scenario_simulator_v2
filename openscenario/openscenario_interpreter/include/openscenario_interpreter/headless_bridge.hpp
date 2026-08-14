@@ -48,6 +48,12 @@ struct EntityState
 {
   std::string name;
   std::uint8_t type;  // 0=EGO 1=VEHICLE 2=PEDESTRIAN 3=MISC_OBJECT
+  // 0=UNKNOWN 1=CAR 2=TRUCK 3=BUS 4=TRAILER 5=MOTORCYCLE 6=BICYCLE 7=PEDESTRIAN. The bicycle
+  // and motorcycle distinction lives here and not in `type`.
+  std::uint8_t subtype;
+  // Axle spacing from the entity's vehicle parameters; 0 for a non-vehicle. Composed here
+  // because only this side can reach the parameters through the concrete entity.
+  double wheel_base;
   std::string action;
   std::string turn_indicator;
   geometry_msgs::msg::Pose pose;

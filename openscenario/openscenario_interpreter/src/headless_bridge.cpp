@@ -18,7 +18,9 @@
 #include <openscenario_interpreter/simulator_core.hpp>
 #include <traffic_simulator/entity/ego_entity.hpp>
 #include <traffic_simulator/entity/entity_base.hpp>
+#include <traffic_simulator/entity/vehicle_entity.hpp>
 #include <traffic_simulator/utils/lanelet_map.hpp>
+#include <traffic_simulator_msgs/msg/entity_subtype.hpp>
 #include <traffic_simulator_msgs/msg/entity_type.hpp>
 
 namespace openscenario_interpreter
@@ -48,6 +50,12 @@ auto compose(const std::string & name) -> EntityState
   EntityState state;
   state.name = name;
   state.type = entity.getEntityType().type;
+  state.subtype = entity.getEntitySubtype().value;
+  state.wheel_base = 0.0;
+  if (const auto vehicle = dynamic_cast<const traffic_simulator::entity::VehicleEntity *>(&entity)) {
+    const auto & axles = vehicle->getParameters().axles;
+    state.wheel_base = axles.front_axle.position_x - axles.rear_axle.position_x;
+  }
   state.action = entity.getCurrentAction();
   state.pose = entity.getMapPose();
   state.twist = entity.getCurrentTwist();

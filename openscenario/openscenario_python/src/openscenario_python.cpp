@@ -125,7 +125,9 @@ class HeadlessRunner
   {
     py::dict d;
     d["name"] = s.name;
-    d["type"] = s.type;  // 0=EGO 1=VEHICLE 2=PEDESTRIAN 3=MISC_OBJECT
+    d["type"] = s.type;        // 0=EGO 1=VEHICLE 2=PEDESTRIAN 3=MISC_OBJECT
+    d["subtype"] = s.subtype;  // 0=UNKNOWN 1=CAR .. 5=MOTORCYCLE 6=BICYCLE 7=PEDESTRIAN
+    d["wheel_base"] = s.wheel_base;  // axle spacing; 0 for a non-vehicle
     d["action"] = s.action;
     d["turn_indicator"] = s.turn_indicator;  // ego only; "" for other entities
     d["pose"] = poseToDict(s.pose);
@@ -222,13 +224,14 @@ public:
 
   // Inject a Diffusion-Planner trajectory. `points` is a map-frame numpy array [N, >=3] of
   // (x, y, yaw[, longitudinal_velocity_mps]). The stamp is taken from the sim clock, not Python.
-  auto setEgoTrajectory(py::array_t<double> points, const std::string & ego_ref) -> void
+  auto setEgoTrajectory(py::array_t<double> points, const std::string & ego_ref, double dt) -> void
   {
     const auto buffer = points.unchecked<2>();
     const auto rows = static_cast<std::size_t>(buffer.shape(0));
     const auto cols = static_cast<std::size_t>(buffer.shape(1));
     if (cols < 3) {
-      throw std::runtime_error("trajectory array must have shape [N, >=3] (x, y, yaw[, v])");
+      throw std::runtime_error(
+        "trajectory array must have shape [N, >=3] (x, y, yaw[, v[, ax[, steer]]])");
     }
 
     autoware_planning_msgs::msg::Trajectory trajectory;
@@ -244,6 +247,14 @@ public:
       tp.pose.orientation.z = std::sin(yaw * 0.5);
       tp.pose.orientation.w = std::cos(yaw * 0.5);
       tp.longitudinal_velocity_mps = cols >= 4 ? static_cast<float>(buffer(i, 3)) : 0.0f;
+      tp.acceleration_mps2 = cols >= 5 ? static_cast<float>(buffer(i, 4)) : 0.0f;
+      tp.front_wheel_angle_rad = cols >= 6 ? static_cast<float>(buffer(i, 5)) : 0.0f;
+      // Row i is the pose i+1 steps ahead. The tracker derives yaw rate from the gap between
+      // consecutive stamps, so leaving these unset pins its reported angular velocity at zero.
+      const double t_from_start = dt * static_cast<double>(i + 1);
+      tp.time_from_start.sec = static_cast<std::int32_t>(t_from_start);
+      tp.time_from_start.nanosec =
+        static_cast<std::uint32_t>((t_from_start - tp.time_from_start.sec) * 1e9);
       trajectory.points.push_back(tp);
     }
 
@@ -305,7 +316,7 @@ PYBIND11_MODULE(openscenario_python, m)
     .def("simulation_time", &HeadlessRunner::simulationTime)
     .def(
       "set_ego_trajectory", &HeadlessRunner::setEgoTrajectory, py::arg("points"),
-      py::arg("ego_ref") = "ego")
+      py::arg("ego_ref") = "ego", py::arg("dt") = 0.1)
     .def(
       "set_ego_turn_indicator", &HeadlessRunner::setEgoTurnIndicator, py::arg("command"),
       py::arg("ego_ref") = "ego")
