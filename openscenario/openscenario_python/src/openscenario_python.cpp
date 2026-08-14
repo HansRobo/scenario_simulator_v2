@@ -292,7 +292,7 @@ public:
     return bridge::conventionalTrafficLightComposedState(lanelet_id);
   }
 
-  // The map the interpreter resolved and loaded. Valid after configure().
+  // The map the interpreter resolved and loaded. Empty until activate().
   auto getLanelet2MapPath() const -> std::string { return bridge::lanelet2MapPath(); }
 };
 

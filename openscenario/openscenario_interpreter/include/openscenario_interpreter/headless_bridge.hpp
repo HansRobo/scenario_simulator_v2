@@ -68,9 +68,10 @@ auto entityStates() -> std::vector<EntityState>;
 
 auto simulationTime() -> double;
 
-// The lanelet2 map file the interpreter resolved from RoadNetwork/LogicFile and loaded. Valid
-// once the scenario is configured. Lets a Python caller build its own map view from the file
-// the simulator is actually running, rather than re-deriving it from the scenario.
+// The lanelet2 map file the interpreter resolved from RoadNetwork/LogicFile and loaded. Empty
+// until the scenario is ACTIVE: the configuration that resolves and loads the map is built in
+// on_activate, not on_configure. Lets a Python caller build its own map view from the file the
+// simulator is actually running, rather than re-deriving it from the scenario.
 auto lanelet2MapPath() -> std::string;
 
 // In-process injection for the (single, "ego"-named) headless ego.
