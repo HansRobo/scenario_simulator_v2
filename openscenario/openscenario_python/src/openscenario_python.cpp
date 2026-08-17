@@ -117,7 +117,6 @@ class HeadlessRunner
   std::shared_ptr<Interpreter> interpreter_;
   // Only tear down rclcpp if THIS runner started it. In Phase 3 the module is imported inside the
   // ROS-enabled training process, which owns the context — we must not shut it down underneath it.
-  bool owns_rclcpp_ = false;
 
   // Marshal one in-process-composed EntityState into a Python dict. No cross-boundary composition
   // happens here — the bridge already assembled the truth in a single call.
@@ -142,12 +141,10 @@ public:
     const std::string & osc_path, const std::string & output_directory,
     double local_frame_rate, double local_real_time_factor, bool consider_pose_by_road_slope)
   {
-    // The Interpreter is an rclcpp lifecycle node; one process drives one scenario because
-    // SimulatorCore is a static singleton. rclcpp is initialized once per process (guarded), and
-    // we remember whether we were the initializer so teardown only shuts down what we started.
+    // The Interpreter is an rclcpp lifecycle node. rclcpp is initialized once per process, and
+    // stays up for its lifetime: see close().
     if (not rclcpp::ok()) {
       rclcpp::init(0, nullptr);
-      owns_rclcpp_ = true;
     }
     rclcpp::NodeOptions options;
     options.append_parameter_override("osc_path", osc_path);
@@ -163,8 +160,13 @@ public:
 
   // Tear down in dependency order WHILE the rclcpp context is still alive: deactivate the
   // lifecycle node (despawns entities and unloads the behavior_tree_plugin ClassLoader via
-  // on_deactivate -> SimulatorCore::deactivate), then drop the node, then shut rclcpp down only if
-  // we started it. Doing this before rclcpp::shutdown avoids the class_loader unload abort at exit.
+  // on_deactivate -> SimulatorCore::deactivate), then drop the node. That ordering is what avoids
+  // the class_loader unload abort.
+  //
+  // The context itself is left to the process. SimulatorCore forbids two scenarios at once, not
+  // two in a lifetime, so a caller may open another runner after this one -- and shutting the
+  // context down here made the next one re-initialize it, after which rcl reports nodes outliving
+  // their context and calls terminate.
   auto close() -> void
   {
     if (interpreter_) {
@@ -178,10 +180,6 @@ public:
         // best-effort teardown
       }
       interpreter_.reset();
-    }
-    if (owns_rclcpp_ && rclcpp::ok()) {
-      rclcpp::shutdown();
-      owns_rclcpp_ = false;
     }
   }
 
