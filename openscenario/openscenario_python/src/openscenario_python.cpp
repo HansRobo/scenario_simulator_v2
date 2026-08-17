@@ -115,8 +115,6 @@ auto boundingBoxToDict(const traffic_simulator_msgs::msg::BoundingBox & bbox) ->
 class HeadlessRunner
 {
   std::shared_ptr<Interpreter> interpreter_;
-  // Only tear down rclcpp if THIS runner started it. In Phase 3 the module is imported inside the
-  // ROS-enabled training process, which owns the context — we must not shut it down underneath it.
 
   // Marshal one in-process-composed EntityState into a Python dict. No cross-boundary composition
   // happens here — the bridge already assembled the truth in a single call.
@@ -165,8 +163,8 @@ public:
   //
   // The context itself is left to the process. SimulatorCore forbids two scenarios at once, not
   // two in a lifetime, so a caller may open another runner after this one -- and shutting the
-  // context down here made the next one re-initialize it, after which rcl reports nodes outliving
-  // their context and calls terminate.
+  // context down here makes the next one re-initialize it, after which rcl reports nodes
+  // outliving their context and calls terminate.
   auto close() -> void
   {
     if (interpreter_) {
