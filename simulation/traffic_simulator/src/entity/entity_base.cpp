@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdlib>
 #include <geometry/bounding_box.hpp>
 #include <geometry/distance.hpp>
 #include <geometry/quaternion/euler_to_quaternion.hpp>
@@ -32,6 +33,29 @@ namespace traffic_simulator
 {
 namespace entity
 {
+namespace
+{
+/// Speed at or below which an entity counts as standing still, in m/s.
+///
+/// A planner that creeps never reaches exactly zero, so a strict epsilon resets the duration
+/// every tick and a stuck entity is never detected as standing still. The value is what "not
+/// moving" means for that check, so it has to exceed the speed a creeping planner holds. It is
+/// read once from SSV2_STAND_STILL_SPEED_MPS so an evaluation can change it without rebuilding.
+auto standStillSpeedThreshold() -> double
+{
+  static const double threshold = []() {
+    if (const auto * const value = std::getenv("SSV2_STAND_STILL_SPEED_MPS")) {
+      try {
+        return std::stod(value);
+      } catch (const std::exception &) {
+      }
+    }
+    return 0.4;
+  }();
+  return threshold;
+}
+}  // namespace
+
 EntityBase::EntityBase(const std::string & name, const CanonicalizedEntityStatus & entity_status)
 : name(name),
   verbose(true),
@@ -55,7 +79,7 @@ EntityBase::EntityBase(const std::string & name, const CanonicalizedEntityStatus
 
   job_list_.append(
     [this](double) {
-      if (std::abs(getCurrentTwist().linear.x) <= std::numeric_limits<double>::epsilon()) {
+      if (std::abs(getCurrentTwist().linear.x) <= standStillSpeedThreshold()) {
         stand_still_duration_ += step_time_;
       } else {
         stand_still_duration_ = 0.0;
