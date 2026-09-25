@@ -18,7 +18,6 @@ if(SSV2_HEADLESS_EGO)
   find_package(pybind11_vendor REQUIRED)
   find_package(pybind11 REQUIRED)
   find_package(Eigen3 REQUIRED)
-  find_package(lanelet2_core REQUIRED)
 
   # The module import name must match PYBIND11_MODULE(openscenario_python, ...).
   pybind11_add_module(openscenario_python src/openscenario_python.cpp src/map_features.cpp)
@@ -34,7 +33,6 @@ if(SSV2_HEADLESS_EGO)
     autoware_planning_msgs
     autoware_vehicle_msgs
     geometry_msgs
-    lanelet2_core
     lifecycle_msgs
     rclcpp)
   target_link_libraries(openscenario_python PRIVATE Eigen3::Eigen)
