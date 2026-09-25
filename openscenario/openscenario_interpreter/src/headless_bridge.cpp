@@ -109,7 +109,9 @@ auto conventionalTrafficLightComposedState(std::int64_t lanelet_id) -> std::stri
 auto conventionalTrafficLightGroups() -> std::vector<TrafficLightGroup>
 {
   std::vector<TrafficLightGroup> groups;
-  for (const auto & light : Bridge::generateConventionalTrafficLightsUpdateRequest().states()) {
+  // Named, not iterated in place: a range-for keeps only states() alive, not the request.
+  const auto request = Bridge::generateConventionalTrafficLightsUpdateRequest();
+  for (const auto & light : request.states()) {
     if (light.traffic_light_status().empty()) {
       continue;
     }
