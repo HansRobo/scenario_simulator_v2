@@ -42,6 +42,9 @@
 #include <openscenario_interpreter/openscenario_interpreter.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <string>
+#include <vector>
+
+#include "map_features.hpp"
 
 namespace py = pybind11;
 
@@ -107,7 +110,108 @@ auto boundingBoxToDict(const traffic_simulator_msgs::msg::BoundingBox & bbox) ->
   d["dimensions"] = dims;
   return d;
 }
+
+auto egoTransform(const std::vector<double> & pose) -> Eigen::Isometry3d
+{
+  if (pose.size() != 7) {
+    throw std::runtime_error("ego_pose must be (x, y, z, qx, qy, qz, qw)");
+  }
+  Eigen::Isometry3d ego_to_map = Eigen::Isometry3d::Identity();
+  ego_to_map.translate(Eigen::Vector3d(pose[0], pose[1], pose[2]));
+  ego_to_map.rotate(Eigen::Quaterniond(pose[6], pose[3], pose[4], pose[5]).normalized());
+  return ego_to_map.inverse();
+}
+
+// [N, P, 2] ego-frame xy; rows are padded with zeros up to the longest polyline.
+auto xyArray(const std::vector<Polyline> & polylines, std::size_t points) -> py::array_t<float>
+{
+  py::array_t<float> array({polylines.size(), points, std::size_t{2}});
+  auto out = array.mutable_unchecked<3>();
+  for (std::size_t i = 0; i < polylines.size(); ++i) {
+    for (std::size_t j = 0; j < points; ++j) {
+      const bool valid = j < polylines[i].size();
+      out(i, j, 0) = valid ? static_cast<float>(polylines[i][j].x()) : 0.0f;
+      out(i, j, 1) = valid ? static_cast<float>(polylines[i][j].y()) : 0.0f;
+    }
+  }
+  return array;
+}
 }  // namespace
+
+// The map as a learned planner sees it around the ego. Built once per map; select() is per tick.
+class PyMapFeatures
+{
+  MapFeatures features_;
+  MapFeatureConfig config_;
+
+  auto lanes(const std::vector<std::size_t> & indices, const Eigen::Isometry3d & map_to_ego) const
+    -> py::dict
+  {
+    const auto transformed = [&](auto member) {
+      std::vector<Polyline> polylines;
+      for (const auto i : indices) {
+        Polyline points;
+        for (const auto & p : features_.lane(i).*member) {
+          points.push_back(map_to_ego * p);
+        }
+        polylines.push_back(std::move(points));
+      }
+      return xyArray(polylines, config_.points_per_lane);
+    };
+    const auto n = indices.size();
+    py::array_t<std::int64_t> ids(n), traffic_light_ids(n);
+    py::array_t<std::int8_t> boundary_types({n, std::size_t{2}}), turn_directions(n);
+    py::array_t<float> speed_limits(n);
+    for (std::size_t k = 0; k < n; ++k) {
+      const auto & lane = features_.lane(indices[k]);
+      ids.mutable_at(k) = lane.id;
+      traffic_light_ids.mutable_at(k) = lane.traffic_light_id;
+      boundary_types.mutable_at(k, 0) = lane.left_type;
+      boundary_types.mutable_at(k, 1) = lane.right_type;
+      turn_directions.mutable_at(k) = lane.turn_direction;
+      speed_limits.mutable_at(k) = lane.speed_limit_mps;
+    }
+    py::dict d;
+    d["lanelet_id"] = ids;
+    d["center"] = transformed(&LaneSegment::centerline);
+    d["left"] = transformed(&LaneSegment::left_boundary);
+    d["right"] = transformed(&LaneSegment::right_boundary);
+    d["boundary_type"] = boundary_types;
+    d["speed_limit_mps"] = speed_limits;
+    d["turn_direction"] = turn_directions;
+    d["traffic_light_id"] = traffic_light_ids;
+    return d;
+  }
+
+public:
+  PyMapFeatures(const lanelet::LaneletMap & map, const MapFeatureConfig & config)
+  : features_(map, config), config_(config)
+  {
+  }
+
+  auto select(
+    const std::vector<double> & ego_pose, const std::vector<std::int64_t> & route_lanelet_ids,
+    std::size_t max_lanes, std::size_t max_route_lanes, std::size_t max_intersection_areas,
+    std::size_t max_stop_lines, std::size_t max_road_borders, double range_m) const -> py::dict
+  {
+    const auto map_to_ego = egoTransform(ego_pose);
+    const Eigen::Vector3d ego(ego_pose[0], ego_pose[1], ego_pose[2]);
+    using Kind = MapFeatures::PolylineKind;
+    py::dict d;
+    d["lanes"] = lanes(features_.nearestLanes(map_to_ego, ego, max_lanes, range_m), map_to_ego);
+    d["route_lanes"] =
+      lanes(features_.routeLanes(route_lanelet_ids, ego, max_route_lanes, range_m), map_to_ego);
+    d["intersection_areas"] = xyArray(
+      features_.nearestPolylines(Kind::intersection_area, map_to_ego, ego, max_intersection_areas, range_m),
+      config_.points_per_intersection_area);
+    d["stop_lines"] = xyArray(
+      features_.nearestPolylines(Kind::stop_line, map_to_ego, ego, max_stop_lines, range_m), 2);
+    d["road_borders"] = xyArray(
+      features_.nearestPolylines(Kind::road_border, map_to_ego, ego, max_road_borders, range_m),
+      config_.points_per_road_border);
+    return d;
+  }
+};
 
 // Facade: owns the Interpreter and reaches the simulator core through the exported headless bridge
 // functions (openscenario_interpreter::headless), NOT the header-inline SimulatorCore statics —
@@ -282,7 +386,6 @@ public:
   }
 
   // Composed conventional traffic-light state for a lanelet id (e.g. "green" / "red circle").
-  // Bulk enumeration of all lights is deferred to Phase 3 (TL sync).
   auto getTrafficLightState(std::int64_t lanelet_id) const -> std::string
   {
     return bridge::conventionalTrafficLightComposedState(lanelet_id);
@@ -290,12 +393,44 @@ public:
 
   // The map the interpreter resolved and loaded. Empty until activate().
   auto getLanelet2MapPath() const -> std::string { return bridge::lanelet2MapPath(); }
+
+  // {traffic light regulatory element id: [(color, shape, status, confidence), ...]} in
+  // autoware_perception_msgs TrafficLightElement values, for every conventional light.
+  auto getTrafficLightGroups() const -> py::dict
+  {
+    py::dict groups;
+    for (const auto & group : bridge::conventionalTrafficLightGroups()) {
+      py::list elements;
+      for (const auto & e : group.elements) {
+        elements.append(py::make_tuple(e.color, e.shape, e.status, e.confidence));
+      }
+      groups[py::int_(group.id)] = elements;
+    }
+    return groups;
+  }
+
+  // Requires activate(): the map is loaded then.
+  auto mapFeatures(const MapFeatureConfig & config) const -> PyMapFeatures
+  {
+    const auto map = bridge::laneletMap();
+    if (not map) {
+      throw std::runtime_error("no map is loaded; call activate() first");
+    }
+    return PyMapFeatures(*map, config);
+  }
 };
 
 PYBIND11_MODULE(openscenario_python, m)
 {
   m.doc() = "Headless in-process OpenSCENARIO driving for the Diffusion-Planner closed-loop "
             "validator (SSV2_HEADLESS_EGO).";
+
+  py::class_<PyMapFeatures>(m, "MapFeatures")
+    .def(
+      "select", &PyMapFeatures::select, py::arg("ego_pose"), py::arg("route_lanelet_ids"),
+      py::arg("max_lanes") = 140, py::arg("max_route_lanes") = 25,
+      py::arg("max_intersection_areas") = 10, py::arg("max_stop_lines") = 30,
+      py::arg("max_road_borders") = 30, py::arg("range_m") = 100.0);
 
   py::class_<HeadlessRunner>(m, "HeadlessRunner")
     .def(
@@ -320,6 +455,18 @@ PYBIND11_MODULE(openscenario_python, m)
     .def("get_entity_states", &HeadlessRunner::getEntityStates)
     .def("get_traffic_light_state", &HeadlessRunner::getTrafficLightState, py::arg("lanelet_id"))
     .def("lanelet2_map_path", &HeadlessRunner::getLanelet2MapPath)
+    .def("get_traffic_light_groups", &HeadlessRunner::getTrafficLightGroups)
+    .def(
+      "map_features",
+      [](const HeadlessRunner & self, std::size_t points_per_lane,
+         std::size_t points_per_intersection_area, std::size_t points_per_road_border,
+         double road_border_max_step_m) {
+        return self.mapFeatures(
+          {points_per_lane, points_per_intersection_area, points_per_road_border,
+           road_border_max_step_m});
+      },
+      py::arg("points_per_lane") = 20, py::arg("points_per_intersection_area") = 40,
+      py::arg("points_per_road_border") = 20, py::arg("road_border_max_step_m") = 5.0)
     .def("close", &HeadlessRunner::close)
     .def("__enter__", [](HeadlessRunner & self) -> HeadlessRunner & { return self; })
     .def("__exit__", [](HeadlessRunner & self, const py::object &, const py::object &,

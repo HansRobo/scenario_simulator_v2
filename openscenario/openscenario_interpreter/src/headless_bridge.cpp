@@ -14,11 +14,14 @@
 
 #ifdef SSV2_HEADLESS_EGO
 
+#include <autoware_perception_msgs/msg/traffic_light_element.hpp>
 #include <openscenario_interpreter/headless_bridge.hpp>
 #include <openscenario_interpreter/simulator_core.hpp>
+#include <simulation_interface/conversions.hpp>
 #include <traffic_simulator/entity/ego_entity.hpp>
 #include <traffic_simulator/entity/entity_base.hpp>
 #include <traffic_simulator/entity/vehicle_entity.hpp>
+#include <traffic_simulator/lanelet_wrapper/lanelet_wrapper.hpp>
 #include <traffic_simulator/utils/lanelet_map.hpp>
 #include <traffic_simulator_msgs/msg/entity_subtype.hpp>
 #include <traffic_simulator_msgs/msg/entity_type.hpp>
@@ -35,6 +38,7 @@ namespace
 // populated `core`.
 struct Bridge : private SimulatorCore::NonStandardOperation, private SimulatorCore::ConditionEvaluation
 {
+  using SimulatorCore::NonStandardOperation::generateConventionalTrafficLightsUpdateRequest;
   using SimulatorCore::NonStandardOperation::getConventionalTrafficLightsComposedState;
   using SimulatorCore::NonStandardOperation::getEgoEntityRef;
   using SimulatorCore::NonStandardOperation::getEntityNamesHeadless;
@@ -100,6 +104,31 @@ auto setEgoTurnIndicator(
 auto conventionalTrafficLightComposedState(std::int64_t lanelet_id) -> std::string
 {
   return Bridge::getConventionalTrafficLightsComposedState(static_cast<lanelet::Id>(lanelet_id));
+}
+
+auto conventionalTrafficLightGroups() -> std::vector<TrafficLightGroup>
+{
+  std::vector<TrafficLightGroup> groups;
+  for (const auto & light : Bridge::generateConventionalTrafficLightsUpdateRequest().states()) {
+    if (light.traffic_light_status().empty()) {
+      continue;
+    }
+    std::vector<TrafficLightElement> elements;
+    for (const auto & bulb : light.traffic_light_status()) {
+      autoware_perception_msgs::msg::TrafficLightElement message;
+      simulation_interface::toMsg(bulb, message);
+      elements.push_back({message.color, message.shape, message.status, message.confidence});
+    }
+    for (const auto & relation_id : light.relation_ids()) {
+      groups.push_back({relation_id, elements});
+    }
+  }
+  return groups;
+}
+
+auto laneletMap() -> lanelet::LaneletMapConstPtr
+{
+  return traffic_simulator::lanelet_wrapper::LaneletWrapper::map();
 }
 }  // namespace headless
 }  // namespace openscenario_interpreter

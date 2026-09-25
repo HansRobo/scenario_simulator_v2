@@ -33,6 +33,7 @@
 #include <geometry_msgs/msg/accel.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <lanelet2_core/LaneletMap.h>
 #include <rclcpp/time.hpp>
 #include <string>
 #include <traffic_simulator_msgs/msg/bounding_box.hpp>
@@ -83,6 +84,29 @@ auto setEgoTurnIndicator(
   const autoware_vehicle_msgs::msg::TurnIndicatorsCommand & command) -> void;
 
 auto conventionalTrafficLightComposedState(std::int64_t lanelet_id) -> std::string;
+
+// One bulb of a traffic-light group, in autoware_perception_msgs::msg::TrafficLightElement values.
+struct TrafficLightElement
+{
+  std::uint8_t color;
+  std::uint8_t shape;
+  std::uint8_t status;
+  float confidence;
+};
+
+// Keyed by the lanelet2 traffic-light regulatory element id -- the id a lanelet references, and the
+// one Autoware publishes as TrafficLightGroup::traffic_light_group_id.
+struct TrafficLightGroup
+{
+  std::int64_t id;
+  std::vector<TrafficLightElement> elements;
+};
+
+// Every conventional light, grouped the way the simulator publishes them to Autoware perception.
+auto conventionalTrafficLightGroups() -> std::vector<TrafficLightGroup>;
+
+// The map the simulator is running, centerlines already overwritten by its loader.
+auto laneletMap() -> lanelet::LaneletMapConstPtr;
 }  // namespace headless
 }  // namespace openscenario_interpreter
 

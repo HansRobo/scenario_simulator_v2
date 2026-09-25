@@ -824,6 +824,11 @@ public:
         std::forward<decltype(xs)>(xs)...);
     }
 
+    static auto generateConventionalTrafficLightsUpdateRequest() -> decltype(auto)
+    {
+      return core->getConventionalTrafficLights()->generateUpdateTrafficLightsRequest();
+    }
+
     template <typename... Ts>
     static auto compareConventionalTrafficLightsState(Ts &&... xs) -> decltype(auto)
     {
