@@ -35,28 +35,26 @@ if(SSV2_HEADLESS_EGO)
     lifecycle_msgs
     rclcpp)
 
-  # MlPlannerObserver builds autoware_ml_planner's own preprocessing from its sources: the package
+  # Each observer feeds a planner's own preprocessing; both share the messages the simulator would
+  # publish to Autoware.
+  set(observer_deps autoware_perception_msgs nav_msgs)
+  set(observers)
+
+  # MlPlannerObserver builds autoware_ml_planner's preprocessing from its sources: the package
   # itself refuses to build without CUDA and TensorRT, which the preprocessing does not use.
   set(ML_PLANNER_SOURCE_DIR "$ENV{ML_PLANNER_SOURCE_DIR}" CACHE PATH
     "autoware_ml_planner package directory; MlPlannerObserver is built only when it is set")
   if(EXISTS "${ML_PLANNER_SOURCE_DIR}/src/preprocessing/input_builder.cpp")
-    set(ml_planner_deps
+    list(APPEND observer_deps
       autoware_lanelet2_extension
       autoware_object_recognition_utils
-      autoware_perception_msgs
       autoware_traffic_light_utils
       autoware_trajectory
       autoware_utils_geometry
       autoware_utils_math
       autoware_vehicle_info_utils
       lanelet2_traffic_rules
-      nav_msgs
       tl_expected)
-    foreach(dep IN LISTS ml_planner_deps)
-      find_package(${dep} REQUIRED)
-    endforeach()
-    find_package(Eigen3 REQUIRED)
-    find_package(xtensor REQUIRED)
     set(ml_planner_src "${ML_PLANNER_SOURCE_DIR}/src")
     target_sources(openscenario_python PRIVATE
       src/ml_planner_observer.cpp
@@ -72,8 +70,36 @@ if(SSV2_HEADLESS_EGO)
       "${ml_planner_src}/utils/utils.cpp")
     target_include_directories(openscenario_python PRIVATE "${ML_PLANNER_SOURCE_DIR}/include")
     target_compile_definitions(openscenario_python PRIVATE OPENSCENARIO_PYTHON_ML_PLANNER)
-    ament_target_dependencies(openscenario_python PUBLIC ${ml_planner_deps})
-    target_link_libraries(openscenario_python PRIVATE Eigen3::Eigen xtensor)
+    list(APPEND observers MlPlannerObserver)
+  else()
+    message(WARNING "ML_PLANNER_SOURCE_DIR does not point at autoware_ml_planner; MlPlannerObserver is left out")
+  endif()
+
+  # DiffusionPlannerObserver links autoware_diffusion_planner's core, which builds its inputs
+  # without running the model.
+  find_package(autoware_diffusion_planner QUIET)
+  if(autoware_diffusion_planner_FOUND)
+    list(APPEND observer_deps autoware_diffusion_planner autoware_vehicle_info_utils)
+    target_sources(openscenario_python PRIVATE src/diffusion_planner_observer.cpp)
+    target_compile_definitions(openscenario_python PRIVATE OPENSCENARIO_PYTHON_DIFFUSION_PLANNER)
+    list(APPEND observers DiffusionPlannerObserver)
+  else()
+    message(WARNING "autoware_diffusion_planner is not in the underlay; DiffusionPlannerObserver is left out")
+  endif()
+
+  if(observers)
+    list(REMOVE_DUPLICATES observer_deps)
+    foreach(dep IN LISTS observer_deps)
+      find_package(${dep} REQUIRED)
+    endforeach()
+    find_package(Eigen3 REQUIRED)
+    if("MlPlannerObserver" IN_LIST observers)
+      find_package(xtensor REQUIRED)
+      target_link_libraries(openscenario_python PRIVATE xtensor)
+    endif()
+    target_sources(openscenario_python PRIVATE src/autoware_messages.cpp)
+    ament_target_dependencies(openscenario_python PUBLIC ${observer_deps})
+    target_link_libraries(openscenario_python PRIVATE Eigen3::Eigen)
 
     # The autoware libraries the simulator's runtime install does not carry are shipped next to
     # the module. Its own copy of the lanelet2 extension and every message library stay the host's.
@@ -90,8 +116,6 @@ if(SSV2_HEADLESS_EGO)
       foreach(lib IN LISTS resolved)
         file(INSTALL \"\${lib}\" DESTINATION \"\${CMAKE_INSTALL_PREFIX}/lib\" FOLLOW_SYMLINK_CHAIN)
       endforeach()")
-  else()
-    message(WARNING "ML_PLANNER_SOURCE_DIR does not point at autoware_ml_planner; MlPlannerObserver is left out")
   endif()
 
   # Install so the module is importable from the integrated .venv once the overlay setup.bash is

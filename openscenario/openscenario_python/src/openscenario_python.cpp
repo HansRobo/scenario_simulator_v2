@@ -47,6 +47,9 @@
 #ifdef OPENSCENARIO_PYTHON_ML_PLANNER
 #include "ml_planner_observer.hpp"
 #endif
+#ifdef OPENSCENARIO_PYTHON_DIFFUSION_PLANNER
+#include "diffusion_planner_observer.hpp"
+#endif
 
 namespace py = pybind11;
 
@@ -121,6 +124,18 @@ auto tensorsToDict(const autoware::ml_planner::preprocess::TensorMap & tensors) 
     py::array_t<float> array(std::vector<py::ssize_t>(tensor.shape().begin(), tensor.shape().end()));
     std::copy(tensor.cbegin(), tensor.cend(), array.mutable_data());
     d[py::str(name)] = array;
+  }
+  return d;
+}
+#endif
+
+#ifdef OPENSCENARIO_PYTHON_DIFFUSION_PLANNER
+// Flat, as the core builds them: the caller shapes each one after the graph that reads it.
+auto inputsToDict(const autoware::diffusion_planner::InputDataMap & inputs) -> py::dict
+{
+  py::dict d;
+  for (const auto & [name, values] : inputs) {
+    d[py::str(name)] = py::array_t<float>(static_cast<py::ssize_t>(values.size()), values.data());
   }
   return d;
 }
@@ -350,6 +365,18 @@ PYBIND11_MODULE(openscenario_python, m)
       py::arg("ego_ref"), py::arg("route_lanelet_ids"), py::arg("goal_pose"))
     .def("observe", &MlPlannerObserver::observe, py::arg("turn_indicator_report"))
     .def("inputs", [](const MlPlannerObserver & self) { return tensorsToDict(self.inputs()); });
+#endif
+
+#ifdef OPENSCENARIO_PYTHON_DIFFUSION_PLANNER
+  py::class_<DiffusionPlannerObserver>(m, "DiffusionPlannerObserver")
+    .def(
+      py::init<
+        const std::string &, const std::vector<std::int64_t> &, const std::vector<double> &,
+        const std::string &>(),
+      py::arg("ego_ref"), py::arg("route_lanelet_ids"), py::arg("goal_pose"),
+      py::arg("args_path"))
+    .def("observe", &DiffusionPlannerObserver::observe, py::arg("turn_indicator_report"))
+    .def("inputs", [](DiffusionPlannerObserver & self) { return inputsToDict(self.inputs()); });
 #endif
 }
 }  // namespace openscenario_python
