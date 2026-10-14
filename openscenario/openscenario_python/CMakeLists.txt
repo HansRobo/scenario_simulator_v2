@@ -70,6 +70,20 @@ if(SSV2_HEADLESS_EGO)
       "${ml_planner_src}/utils/utils.cpp")
     target_include_directories(openscenario_python PRIVATE "${ML_PLANNER_SOURCE_DIR}/include")
     target_compile_definitions(openscenario_python PRIVATE OPENSCENARIO_PYTHON_ML_PLANNER)
+    # The preprocessing's interface changed with its inputs: one that puts steering in the ego
+    # history also takes the wheel base and a steering history, and one that splits lanes by
+    # length no longer takes a line string step. Both are read off the sources being compiled.
+    file(STRINGS "${ML_PLANNER_SOURCE_DIR}/include/autoware/ml_planner/dimensions.hpp"
+      ml_planner_steering REGEX "EGO_AGENT_PAST_IDX_STEERING")
+    if(ml_planner_steering)
+      target_compile_definitions(openscenario_python PRIVATE OPENSCENARIO_PYTHON_ML_PLANNER_STEERING)
+    endif()
+    file(STRINGS
+      "${ML_PLANNER_SOURCE_DIR}/include/autoware/ml_planner/preprocessing/input_builder.hpp"
+      ml_planner_map_step REGEX "line_string_max_step_m")
+    if(ml_planner_map_step)
+      target_compile_definitions(openscenario_python PRIVATE OPENSCENARIO_PYTHON_ML_PLANNER_MAP_STEP)
+    endif()
     list(APPEND observers MlPlannerObserver)
   else()
     message(WARNING "ML_PLANNER_SOURCE_DIR does not point at autoware_ml_planner; MlPlannerObserver is left out")

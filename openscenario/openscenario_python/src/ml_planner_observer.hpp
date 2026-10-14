@@ -33,12 +33,17 @@ class MlPlannerObserver
 {
 public:
   // Requires an activated runner: the map and the ego exist then. goal_pose is (x, y, yaw).
+  // vehicle_spec is (base_link_to_front, length, width, wheel_base) of the vehicle the model is
+  // evaluated for. A preprocessing that takes the wheel base requires it; otherwise an empty one
+  // takes the ego's bounding box.
   MlPlannerObserver(
     const std::string & ego_ref, const std::vector<std::int64_t> & route_lanelet_ids,
-    const std::vector<double> & goal_pose);
+    const std::vector<double> & goal_pose, const std::vector<double> & vehicle_spec);
 
   // Once per simulation step. turn_indicator_report is a TurnIndicatorsReport value.
-  auto observe(std::uint8_t turn_indicator_report) -> void;
+  // steering_tire_angle is what the vehicle would report; a preprocessing that reads steering
+  // requires it, any other ignores it.
+  auto observe(std::uint8_t turn_indicator_report, double steering_tire_angle) -> void;
 
   // Every model input but initial_noise, normalized, without the batch axis.
   auto inputs() const -> autoware::ml_planner::preprocess::TensorMap;
@@ -53,6 +58,9 @@ private:
   autoware::ml_planner::VehicleSpec vehicle_;
   Buffer<nav_msgs::msg::Odometry> ego_;
   Buffer<autoware_vehicle_msgs::msg::TurnIndicatorsReport> turn_indicators_;
+#ifdef OPENSCENARIO_PYTHON_ML_PLANNER_STEERING
+  Buffer<autoware_vehicle_msgs::msg::SteeringReport> steering_;
+#endif
   Buffer<autoware_perception_msgs::msg::TrackedObjects> objects_;
   Buffer<autoware_perception_msgs::msg::TrafficLightGroupArray> traffic_lights_;
 };

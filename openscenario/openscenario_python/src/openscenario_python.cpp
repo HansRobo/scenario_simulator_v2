@@ -45,6 +45,9 @@
 #include <vector>
 
 #ifdef OPENSCENARIO_PYTHON_ML_PLANNER
+#include <autoware/ml_planner/dimensions.hpp>
+#include <cmath>
+
 #include "ml_planner_observer.hpp"
 #endif
 #ifdef OPENSCENARIO_PYTHON_DIFFUSION_PLANNER
@@ -361,10 +364,18 @@ PYBIND11_MODULE(openscenario_python, m)
 #ifdef OPENSCENARIO_PYTHON_ML_PLANNER
   py::class_<MlPlannerObserver>(m, "MlPlannerObserver")
     .def(
-      py::init<const std::string &, const std::vector<std::int64_t> &, const std::vector<double> &>(),
-      py::arg("ego_ref"), py::arg("route_lanelet_ids"), py::arg("goal_pose"))
-    .def("observe", &MlPlannerObserver::observe, py::arg("turn_indicator_report"))
+      py::init<
+        const std::string &, const std::vector<std::int64_t> &, const std::vector<double> &,
+        const std::vector<double> &>(),
+      py::arg("ego_ref"), py::arg("route_lanelet_ids"), py::arg("goal_pose"),
+      py::arg("vehicle_spec") = std::vector<double>{})
+    .def(
+      "observe", &MlPlannerObserver::observe, py::arg("turn_indicator_report"),
+      py::arg("steering_tire_angle") = std::nan(""))
     .def("inputs", [](const MlPlannerObserver & self) { return tensorsToDict(self.inputs()); });
+  // The ego_agent_past width the preprocessing was compiled for, so a caller can refuse a model
+  // whose graph takes another before any scenario runs.
+  m.attr("ML_PLANNER_EGO_HISTORY_DIM") = autoware::ml_planner::EGO_HISTORY_DIM;
 #endif
 
 #ifdef OPENSCENARIO_PYTHON_DIFFUSION_PLANNER
