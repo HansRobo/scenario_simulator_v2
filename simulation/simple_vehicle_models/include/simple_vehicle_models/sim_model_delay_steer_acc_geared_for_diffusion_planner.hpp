@@ -81,6 +81,34 @@ public:
     double xy_heading_rate_coeff, bool use_rk4);
 
   /**
+   * @param [in] yaw_steer_time_constant time constant of the lag from the steer state to the
+   *             tire angle that drives yaw [s]; 0 (with yaw_steer_time_constant_per_speed = 0)
+   *             makes yaw follow the steer state directly
+   * @param [in] yaw_steer_time_constant_per_speed growth of that time constant with |vx| [s/(m/s)]
+   * @param [in] course_lead_time the travel direction leads yaw by this times the yaw rate the
+   *             un-lagged steer state would give minus the actual yaw rate [s]; it vanishes in a
+   *             steady turn
+   * @param [in] steer_us_comp understeer compensation applied to the steer target as
+   *             (1 + steer_us_comp · vx² / L), as the vehicle interface does upstream of the
+   *             actuator; 0 = none
+   * @param [in] decel_scaling_factor scaling factor for a negative accel command
+   * @param [in] decel_time_constant time constant of the accel dynamics for a negative command
+   * @param [in] slope_gain gain on the slope acceleration input
+   *
+   * @note yaw_steer_time_constant = yaw_steer_time_constant_per_speed = course_lead_time = 0,
+   *       steer_us_comp = 0, decel_scaling_factor = debug_acc_scaling_factor,
+   *       decel_time_constant = acc_time_constant and slope_gain = 1 reproduce the constructor above.
+   */
+  SimModelDelaySteerAccGearedForDiffusionPlanner(
+    double vx_lim, double steer_lim, double vx_rate_lim, double steer_rate_lim, double wheelbase,
+    double dt, double acc_delay, double acc_time_constant, double steer_delay,
+    double steer_time_constant, double steer_dead_band, double steer_bias,
+    double debug_acc_scaling_factor, double debug_steer_scaling_factor, double k_us,
+    double xy_heading_rate_coeff, bool use_rk4, double yaw_steer_time_constant,
+    double yaw_steer_time_constant_per_speed, double course_lead_time, double steer_us_comp,
+    double decel_scaling_factor, double decel_time_constant, double slope_gain);
+
+  /**
    * @brief default destructor
    */
   ~SimModelDelaySteerAccGearedForDiffusionPlanner() = default;
@@ -104,6 +132,12 @@ public:
    */
   int getAccQueueSize() const;
   int getSteerQueueSize() const;
+
+  /**
+   * @brief overwrite the tire angle that drives yaw (the lagged steer state).
+   *        resetStateQueues() seeds it with the current steer state.
+   */
+  void setYawSteer(double yaw_steer);
 
 private:
   const double MIN_TIME_CONSTANT;  //!< @brief minimum time constant
@@ -145,6 +179,21 @@ private:
   const double k_us_;                        //!< @brief understeer coefficient [rad/(m/s²)]
   const double xy_heading_rate_coeff_;       //!< @brief xy heading rate coefficient
   const bool use_rk4_;                       //!< @brief whether to use Runge-Kutta integration
+  const double yaw_steer_time_constant_;     //!< @brief steer-to-yaw lag at standstill [s]
+  const double yaw_steer_time_constant_per_speed_;  //!< @brief its growth with |vx| [s/(m/s)]
+  const double course_lead_time_;  //!< @brief travel direction lead over yaw per yaw-rate lag [s]
+  const double steer_us_comp_;  //!< @brief understeer compensation on the steer target [rad/(m/s²)]
+  const double decel_scaling_factor_;  //!< @brief scaling factor for a negative accel command
+  const double decel_time_constant_;   //!< @brief accel time constant for a negative command
+  const double slope_gain_;            //!< @brief gain on the slope acceleration input
+  // The tire angle that drives yaw: the steer state through a first-order lag whose time constant
+  // grows with speed. Frozen during update() like the delayed states and advanced after it.
+  double yaw_steer_ = 0.0;
+
+  bool hasYawSteerLag() const
+  {
+    return yaw_steer_time_constant_ > 0.0 || yaw_steer_time_constant_per_speed_ > 0.0;
+  }
 
   /**
    * @brief steady-state yaw rate including understeer (k_us) and steer bias.

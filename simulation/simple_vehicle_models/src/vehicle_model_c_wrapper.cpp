@@ -180,6 +180,43 @@ VmModel * vm_create_delay_steer_acc_geared_for_diffusion_planner(
   return m;
 }
 
+// for_diffusion_planner に次を足した版:
+//  - ステア状態からヨーを駆動するタイヤ角への一次遅れ (時定数 = yaw_steer_time_constant +
+//    yaw_steer_time_constant_per_speed·|vx|) と、その間だけ進行方向がヨーに先行する項
+//    (course_lead_time·(遅れなしのヨーレート − 実ヨーレート))。時定数 2 つが 0 で無効。
+//  - steer_us_comp: 指令側 understeer 補償 (steer 目標 × (1 + steer_us_comp·vx²/L))。0 で無効。
+//  - decel_*: 負の加速度指令の gain / 時定数。加速側の値と同じで無効。
+//  - slope_gain: slope 入力の gain。1 で上と一致。
+VmModel * vm_create_delay_steer_acc_geared_for_diffusion_planner_x(
+  double vx_lim, double steer_lim, double vx_rate_lim, double steer_rate_lim, double wheelbase,
+  double sub_dt, double acc_delay, double acc_time_constant, double steer_delay,
+  double steer_time_constant, double steer_dead_band, double steer_bias,
+  double debug_acc_scaling_factor, double debug_steer_scaling_factor, double k_us,
+  double xy_heading_rate_coeff, double use_rk4, double yaw_steer_time_constant,
+  double yaw_steer_time_constant_per_speed, double course_lead_time, double steer_us_comp)
+{
+  auto * m = new VmModel{};
+  m->type = VmModelType::DELAY_STEER_ACC_GEARED_FOR_DIFFUSION_PLANNER;
+  m->impl = std::make_unique<SimModelDelaySteerAccGearedForDiffusionPlanner>(
+    vx_lim, steer_lim, vx_rate_lim, steer_rate_lim, wheelbase, sub_dt, acc_delay, acc_time_constant,
+    steer_delay, steer_time_constant, steer_dead_band, steer_bias, debug_acc_scaling_factor,
+    debug_steer_scaling_factor, k_us, xy_heading_rate_coeff, use_rk4 > 0.5,
+    yaw_steer_time_constant, yaw_steer_time_constant_per_speed, course_lead_time, steer_us_comp,
+    debug_acc_scaling_factor, acc_time_constant, 1.0);
+  m->sub_dt = sub_dt;
+  m->steer_bias = steer_bias;
+  return m;
+}
+
+// ヨーを駆動するタイヤ角 (steer 状態と同じ単位、bias を含まない) を上書きする。
+// reset 後に呼ぶ (reset は現在の steer 状態で seed する)。for_diffusion_planner 以外では no-op。
+void vm_set_yaw_steer(VmModel * m, double yaw_steer)
+{
+  if (auto * d = dynamic_cast<SimModelDelaySteerAccGearedForDiffusionPlanner *>(m->impl.get())) {
+    d->setYawSteer(yaw_steer);
+  }
+}
+
 void vm_destroy(VmModel * m) { delete m; }
 
 // ---- input --------------------------------------------------------------
@@ -320,8 +357,11 @@ double vm_get_wz(VmModel * m) { return m->impl->getWz(); }
 // n_full[k0+j]: integer sub-steps for interval j (int32).
 // rem[k0+j]:    fractional remainder [s]; integrated if > rem_eps.
 // steer_out:    raw getSteer() value (= steer_state + steer_bias; matches vm_get_steer).
-void vm_integrate_to_horizons(
+// slope_acc[k]: gravity acceleration along the heading for command k (positive downhill), fed to
+//   the slope input; null means a flat road.
+void vm_integrate_to_horizons_slope(
   VmModel * m, int n_intervals, int k0, const double * accel_des, const double * steer_des,
+  const double * slope_acc,
   const int * n_full, const double * rem, double rem_eps, int n_horizons, const int * horizons,
   double * x_out, double * y_out, double * yaw_out, double * vx_out, double * ax_out,
   double * steer_out)
@@ -350,6 +390,7 @@ void vm_integrate_to_horizons(
       u(1) = steer_des[idx];
     } else {
       u(0) = accel_des[idx];
+      u(2) = slope_acc ? slope_acc[idx] : 0.0;
       u(3) = steer_des[idx];
     }
     m->impl->setInput(u);
@@ -374,6 +415,18 @@ void vm_integrate_to_horizons(
       ++h_idx;
     }
   }
+}
+
+// vm_integrate_to_horizons_slope on a flat road.
+void vm_integrate_to_horizons(
+  VmModel * m, int n_intervals, int k0, const double * accel_des, const double * steer_des,
+  const int * n_full, const double * rem, double rem_eps, int n_horizons, const int * horizons,
+  double * x_out, double * y_out, double * yaw_out, double * vx_out, double * ax_out,
+  double * steer_out)
+{
+  vm_integrate_to_horizons_slope(
+    m, n_intervals, k0, accel_des, steer_des, nullptr, n_full, rem, rem_eps, n_horizons, horizons,
+    x_out, y_out, yaw_out, vx_out, ax_out, steer_out);
 }
 
 }  // extern "C"
