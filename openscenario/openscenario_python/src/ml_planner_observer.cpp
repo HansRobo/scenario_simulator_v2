@@ -28,7 +28,9 @@ namespace bridge = openscenario_interpreter::headless;
 namespace preprocess = autoware::ml_planner::preprocess;
 using autoware_perception_msgs::msg::TrackedObjects;
 using autoware_perception_msgs::msg::TrafficLightGroupArray;
+#ifdef OPENSCENARIO_PYTHON_ML_PLANNER_STEERING
 using autoware_vehicle_msgs::msg::SteeringReport;
+#endif
 using autoware_vehicle_msgs::msg::TurnIndicatorsReport;
 using nav_msgs::msg::Odometry;
 

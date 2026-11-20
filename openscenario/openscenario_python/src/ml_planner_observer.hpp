@@ -22,6 +22,9 @@
 
 #include <autoware/ml_planner/preprocessing/input_builder.hpp>
 #include <autoware/ml_planner/utils/timed_buffer.hpp>
+#ifdef OPENSCENARIO_PYTHON_ML_PLANNER_STEERING
+#include <autoware_vehicle_msgs/msg/steering_report.hpp>
+#endif
 #include <cstdint>
 #include <memory>
 #include <string>
