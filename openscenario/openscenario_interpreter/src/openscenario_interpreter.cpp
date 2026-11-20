@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <boost/json.hpp>
+#include <get_parameter/get_parameter.hpp>
 #include <openscenario_interpreter/openscenario_interpreter.hpp>
 #include <openscenario_interpreter/record.hpp>
 #include <openscenario_interpreter/syntax/object_controller.hpp>
@@ -24,8 +25,10 @@
 #include <openscenario_interpreter/syntax/scenario_object.hpp>
 #include <openscenario_interpreter/syntax/speed_condition.hpp>
 #include <openscenario_interpreter/utility/overload.hpp>
+#include <openscenario_interpreter/visualization_buffer.hpp>
 #include <sstream>
 #include <status_monitor/status_monitor.hpp>
+#include <traffic_simulator/api/configuration.hpp>
 #include <traffic_simulator/data_type/lanelet_pose.hpp>
 
 #define DECLARE_PARAMETER(IDENTIFIER) \
@@ -57,6 +60,7 @@ Interpreter::Interpreter(const rclcpp::NodeOptions & options)
   osc_path(""),
   output_directory("/tmp"),
   publish_empty_context(false),
+  publish_visualization(false),
   record(false),
   record_option(""),
   record_storage_id(""),
@@ -67,13 +71,15 @@ Interpreter::Interpreter(const rclcpp::NodeOptions & options)
   post_process_client(
     post_process_client_node
       ->create_client<openscenario_interpreter_msgs::srv::PostProcess>(
-        "/scenario_post_processor/post_process"))
+        "/scenario_post_processor/post_process")),
+  scenario_runtime(std::make_shared<ScenarioRuntime>())
 {
   DECLARE_PARAMETER(local_frame_rate);
   DECLARE_PARAMETER(local_real_time_factor);
   DECLARE_PARAMETER(osc_path);
   DECLARE_PARAMETER(output_directory);
   DECLARE_PARAMETER(publish_empty_context);
+  DECLARE_PARAMETER(publish_visualization);
   DECLARE_PARAMETER(record);
   DECLARE_PARAMETER(record_option);
   DECLARE_PARAMETER(record_storage_id);
@@ -153,12 +159,13 @@ auto Interpreter::on_configure(const rclcpp_lifecycle::State &) -> Result
       GET_PARAMETER(output_directory);
       GET_PARAMETER(publish_empty_context);
       GET_PARAMETER(record);
+      GET_PARAMETER(publish_visualization);
       GET_PARAMETER(record_option);
       GET_PARAMETER(record_storage_id);
       GET_PARAMETER(post_process_command);
       GET_PARAMETER(post_process_timeout);
 
-      script = std::make_shared<OpenScenario>(osc_path);
+      script = std::make_shared<OpenScenario>(osc_path, scenario_runtime);
 
       common::status_monitor.updateThreshold(
         std::chrono::seconds(common::getParameter<std::int64_t>("status_monitor_threshold", 10)));
@@ -214,8 +221,10 @@ auto Interpreter::evaluateFrame() -> void
 
   const auto update_time = execution_timer.invoke("update", []() { SimulatorCore::update(); });
 
-  const auto output_time =
-    execution_timer.invoke("output", [this]() { publishCurrentContext(); });
+  const auto output_time = execution_timer.invoke("output", [this]() {
+    publishCurrentContext();
+    VisualizationBuffer::flush();
+  });
 
   auto generate_double_user_defined_value_message = [](double value) {
     tier4_simulation_msgs::msg::UserDefinedValue message;
@@ -284,6 +293,7 @@ auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
     withExceptionHandler(
       [this](auto &&...) {
         publishCurrentContext();
+        VisualizationBuffer::flush();
         deactivate();
       },
       [this]() { evaluateFrame(); });
@@ -319,6 +329,22 @@ auto Interpreter::on_activate(const rclcpp_lifecycle::State &) -> Result
 
         SimulatorCore::activate(
           shared_from_this(), makeCurrentConfiguration(), local_real_time_factor, local_frame_rate);
+
+        if (publish_visualization) {
+          /*
+             Markers are republished every frame while their condition is
+             evaluated. Giving them a lifetime lets the ones that are no longer
+             updated expire instead of staying in Rviz forever.
+
+             A lifetime of exactly one frame period made the markers blink
+             slightly even when no frame was late, because the arrival of the
+             next message jitters. Two frame periods absorb that jitter, while
+             a frame that is late by more than one period still shows up as a
+             blink of the markers.
+          */
+          VisualizationBuffer::activate(
+            shared_from_this(), rclcpp::Duration(2 * currentLocalFrameRate()));
+        }
 
         /*
            DIRTY HACK!
@@ -389,6 +415,7 @@ auto Interpreter::on_shutdown(const rclcpp_lifecycle::State &) -> Result
   timer.reset();
   scenarios.clear();
   script.reset();
+  VisualizationBuffer::deactivate();
   common::status_monitor.overrideThreshold(
     simulator_core_shutdown_threshold, SimulatorCore::deactivate);
   return Interpreter::Result::SUCCESS;  // => Finalized
@@ -428,6 +455,8 @@ auto Interpreter::reset() -> void
   if (output_time_publisher->is_activated()) {
     output_time_publisher->on_deactivate();
   }
+
+  VisualizationBuffer::deactivate();
 
   /*
   Interpreter::reset() and Interpreter::on_shutdown() functions are slow,

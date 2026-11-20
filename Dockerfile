@@ -46,7 +46,7 @@ ENV CC="/usr/lib/ccache/gcc"
 ENV CXX="/usr/lib/ccache/g++"
 ENV CCACHE_DIR="/ccache"
 RUN --mount=type=cache,target=/ccache bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    colcon build --cmake-args \ 
+    colcon build --cmake-args \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_CPP_MOCK_SCENARIOS=ON \
     -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -85,6 +85,10 @@ COPY --from=development /home/ubuntu/Desktop/scenario_simulator_ws/src/ /home/ub
 RUN find /home/ubuntu/Desktop/scenario_simulator_ws/install -name cmake -type d -exec rm -rf {} + && \
     find /home/ubuntu/Desktop/scenario_simulator_ws/install -name '*.a' -type f -delete && \
     rm -rf /home/ubuntu/Desktop/scenario_simulator_ws/install/include
+
+# /home/ubuntu is mode 0750 in the Ubuntu 24.04 base image; make it traversable
+# so the entrypoint also works when the container runs with a non-ubuntu UID.
+RUN chmod 0755 /home/ubuntu
 
 COPY ./docker-entrypoint.sh /
 RUN chmod a+x /docker-entrypoint.sh
