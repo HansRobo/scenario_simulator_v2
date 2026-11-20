@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16.3) # Ubuntu 20.04 default CMake version
 
 project(openscenario_interpreter)
 
+option(SSV2_HEADLESS_EGO "Build the interpreter for in-process headless simulation" OFF)
+
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
@@ -129,6 +131,7 @@ target_link_libraries(${PROJECT_NAME}_node ${PROJECT_NAME})
 
 # R2 spike: manual lifecycle driving (no executor spin) for the headless pybind path.
 if(SSV2_HEADLESS_EGO)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC SSV2_HEADLESS_EGO)
   ament_auto_add_executable(headless_interpreter_drive_check
     src/headless_interpreter_drive_check.cpp)
   target_link_libraries(headless_interpreter_drive_check ${PROJECT_NAME})
