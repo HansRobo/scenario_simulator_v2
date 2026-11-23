@@ -321,13 +321,19 @@ auto PerceptionReproducerSensor::update(
   -> void
 {
   if (std::isnan(current_scenario_time) || current_scenario_time < 0.0) {
+    // Seed perception during initialization with the first recorded objects.
+    if (not tracked_objects_stream_.empty()) {
+      tracked_objects_stream_.publishNearest(0.0, current_ros_time);
+    }
     return;
   }
 
   if (not signal_filter_applied_) {
     signal_filter_applied_ = true;
 #ifdef PERCEPTION_REPRODUCER_HAS_TRAFFIC_LIGHT_GROUP_ARRAY
-    applyGoverningSignalFilter();
+    if (config_.filter_signals_to_driven_lanes) {
+      applyGoverningSignalFilter();
+    }
 #endif
   }
 

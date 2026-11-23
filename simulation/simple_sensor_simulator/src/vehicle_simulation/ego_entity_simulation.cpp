@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+#include <autoware_vehicle_msgs/msg/steering_report.hpp>
 #include <concealer/autoware_universe.hpp>
 #include <filesystem>
 #include <geometry/quaternion/euler_to_quaternion.hpp>
@@ -19,10 +21,39 @@
 #include <geometry/quaternion/get_rotation_matrix.hpp>
 #include <geometry/quaternion/quaternion_to_euler.hpp>
 #include <geometry/transform.hpp>
+#include <rclcpp/serialization.hpp>
+#include <rosbag2_cpp/reader.hpp>
 #include <simple_sensor_simulator/vehicle_simulation/ego_entity_simulation.hpp>
 #include <traffic_simulator/helper/helper.hpp>
 #include <traffic_simulator/lanelet_wrapper/pose.hpp>
 #include <traffic_simulator/utils/pose.hpp>
+#include <type_traits>
+#include <utility>
+
+namespace
+{
+/// @note rosbag2_storage::SerializedBagMessage renamed `time_stamp` (Humble) to `recv_timestamp`
+/// (Jazzy and later). Detect the available member at compile time so this file builds on both.
+template <typename T, typename = void>
+struct has_recv_timestamp : std::false_type
+{
+};
+template <typename T>
+struct has_recv_timestamp<T, std::void_t<decltype(std::declval<T>().recv_timestamp)>>
+: std::true_type
+{
+};
+
+template <typename T>
+auto bagMessageTimestamp(const T & message)
+{
+  if constexpr (has_recv_timestamp<T>::value) {
+    return message.recv_timestamp;
+  } else {
+    return message.time_stamp;
+  }
+}
+}  // namespace
 
 namespace vehicle_simulation
 {
@@ -259,8 +290,8 @@ auto EgoEntitySimulation::makeSimulationModel(
         common::getParameter<int>("delay_steer_acc_geared_for_diffusion_planner.version", 1);
       const auto ns = "delay_steer_acc_geared_for_diffusion_planner.v" +
                       std::to_string(delay_steer_acc_geared_for_diffusion_planner_version) + ".";
-      return std::make_shared<autoware::simulator::simple_planning_simulator::
-                                SimModelDelaySteerAccGearedForDiffusionPlanner>(
+      auto model = std::make_shared<
+        autoware::simulator::simple_planning_simulator::SimModelDelaySteerAccGearedForDiffusionPlanner>(
         vel_lim, steer_lim, vel_rate_lim, steer_rate_lim, wheel_base, step_time,
         common::getParameter<double>(ns + "acc_time_delay", 0.1),
         common::getParameter<double>(ns + "acc_time_constant", 0.1),
@@ -273,6 +304,16 @@ auto EgoEntitySimulation::makeSimulationModel(
         common::getParameter<double>(ns + "k_us", 0.0),
         common::getParameter<double>(ns + "xy_heading_rate_coeff", 0.0),
         common::getParameter<bool>(ns + "use_rk4", false));
+      model->setStartDeadTime(common::getParameter<double>(ns + "start_dead_time", 0.0));
+      model->setFirstStartDeadTime(common::getParameter<double>(ns + "first_start_dead_time", 0.0));
+      model->setStructure(
+        common::getParameter<double>(ns + "yaw_steer_time_constant", 0.0),
+        common::getParameter<double>(ns + "yaw_steer_time_constant_per_speed", 0.0),
+        common::getParameter<double>(ns + "course_lead_time", 0.0),
+        common::getParameter<double>(ns + "steer_us_comp", 0.0),
+        common::getParameter<double>(ns + "decel_scaling_factor", -1.0),
+        common::getParameter<double>(ns + "decel_time_constant", -1.0));
+      return model;
     }
 
     case VehicleModelType::DELAY_STEER_MAP_ACC_GEARED:
@@ -377,6 +418,61 @@ void EgoEntitySimulation::requestSpeedChange(double value)
   vehicle_model_ptr_->setState(v);
 }
 
+auto EgoEntitySimulation::setReplaySteering(
+  const std::string & bag_path, const double replay_start_time) -> void
+{
+  constexpr auto topic = "/vehicle/status/steering_status";
+  rosbag2_cpp::Reader reader;
+  rosbag2_storage::StorageOptions storage_options;
+  storage_options.uri = bag_path;
+  reader.open(storage_options);
+  const auto starting_time_ns =
+    static_cast<int64_t>(reader.get_metadata().starting_time.time_since_epoch().count());
+  const auto replay_start_time_ns = static_cast<int64_t>(replay_start_time * 1e9);
+  rosbag2_storage::StorageFilter storage_filter;
+  storage_filter.topics = {topic};
+  reader.set_filter(storage_filter);
+  rclcpp::Serialization<autoware_vehicle_msgs::msg::SteeringReport> serialization;
+  replay_steering_.clear();
+  while (reader.has_next()) {
+    const auto bag_message = reader.read_next();
+    const rclcpp::SerializedMessage serialized_message(*bag_message->serialized_data);
+    autoware_vehicle_msgs::msg::SteeringReport report;
+    serialization.deserialize_message(&serialized_message, &report);
+    replay_steering_.emplace_back(
+      bagMessageTimestamp(*bag_message) - starting_time_ns - replay_start_time_ns,
+      report.steering_tire_angle);
+  }
+  std::stable_sort(
+    replay_steering_.begin(), replay_steering_.end(),
+    [](const auto & a, const auto & b) { return a.first < b.first; });
+  RCLCPP_INFO_STREAM(
+    rclcpp::get_logger("simple_sensor_simulator.ego_entity_simulation"),
+    "Loaded " << replay_steering_.size() << " " << topic << " samples from " << bag_path);
+}
+
+auto EgoEntitySimulation::replaySteeringAt(const double scenario_time) const
+  -> std::optional<double>
+{
+  if (replay_steering_.empty()) {
+    return std::nullopt;
+  }
+  const auto time_ns = static_cast<int64_t>(scenario_time * 1e9);
+  const auto upper = std::upper_bound(
+    replay_steering_.begin(), replay_steering_.end(), time_ns,
+    [](int64_t value, const auto & element) { return value < element.first; });
+  if (upper == replay_steering_.begin()) {
+    return upper->second;
+  }
+  if (upper == replay_steering_.end()) {
+    return replay_steering_.back().second;
+  }
+  const auto & previous = *std::prev(upper);
+  const auto t = static_cast<double>(time_ns - previous.first) /
+                 static_cast<double>(upper->first - previous.first);
+  return previous.second + (upper->second - previous.second) * t;
+}
+
 auto EgoEntitySimulation::overwrite(
   const traffic_simulator_msgs::msg::EntityStatus & status, const double current_time,
   const double step_time, const bool is_npc_logic_started) -> void
@@ -433,7 +529,9 @@ auto EgoEntitySimulation::overwrite(
         [[fallthrough]];
 
       case VehicleModelType::DELAY_STEER_VEL:
-        if (
+        if (const auto steer = replaySteeringAt(current_time)) {
+          state(4) = *steer;
+        } else if (
           std::abs(status.action_status.twist.linear.x) <
           min_linear_velocity_for_steer_calculation) {
           state(4) = 0.0;
@@ -454,6 +552,16 @@ auto EgoEntitySimulation::overwrite(
         state(1) = world_relative_position_.y();
         state(2) = yaw;
         vehicle_model_ptr_->setState(state);
+        if (
+          const auto model = std::dynamic_pointer_cast<
+            autoware::simulator::simple_planning_simulator::SimModelDelaySteerAccGearedForDiffusionPlanner>(
+            vehicle_model_ptr_)) {
+          if (const auto steer = replaySteeringAt(current_time)) {
+            model->holdSteer(*steer);
+          } else {
+            model->syncYawSteer();
+          }
+        }
         break;
 
       case VehicleModelType::EXTERNAL:

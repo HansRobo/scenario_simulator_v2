@@ -69,15 +69,16 @@ double SimModelDelaySteerAccGearedForDiffusionPlanner::getAx() { return state_(I
 
 double SimModelDelaySteerAccGearedForDiffusionPlanner::getWz()
 {
-  return calc_yaw_rate(state_(IDX::VX), state_(IDX::STEER));
+  return calc_yaw_rate(state_(IDX::VX), hasYawSteerLag() ? yaw_steer_ : state_(IDX::STEER));
 }
 
 double SimModelDelaySteerAccGearedForDiffusionPlanner::getSteer()
 {
   // Steer bias now enters the yaw equation (calc_yaw_rate, as the viewer's β), not the
   // measured-steer/tracking loop, so that the bias produces a net yaw offset instead of being
-  // cancelled by the steer controller. The reported/tracked steer is the actual state value.
-  return state_(IDX::STEER);
+  // cancelled by the steer controller. The reported steer is the state, divided back by the
+  // understeer ratio when the interface compensates (it republishes the actuator angle that way).
+  return state_(IDX::STEER) / usRatio(state_(IDX::VX));
 }
 
 void SimModelDelaySteerAccGearedForDiffusionPlanner::update(const double & dt)
@@ -88,6 +89,32 @@ void SimModelDelaySteerAccGearedForDiffusionPlanner::update(const double & dt)
   acc_input_queue_.push_back(input_(IDX_U::PEDAL_ACCX_DES));
   delayed_input(IDX_U::PEDAL_ACCX_DES) = acc_input_queue_.front();
   acc_input_queue_.pop_front();
+  // At standstill a start command first releases the brake: the last braking command is held for
+  // start_dead_time_ before the positive command reaches the actuator. The first start of a run can
+  // take longer (first_start_dead_time_): from neutral with the parking brake set, the vehicle
+  // re-applies its brake for seconds after shifting to drive. The brake holds the vehicle still, also on
+  // a slope, while it stands with no start command and for the whole hold.
+  bool holding = false;
+  if (start_dead_time_ > 0.0 || first_start_dead_time_ > 0.0) {
+    const double hold = starts_held_ == 0 && first_start_dead_time_ > 0.0 ? first_start_dead_time_
+                                                                          : start_dead_time_;
+    if (state_(IDX::VX) == 0.0) {
+      if (delayed_input(IDX_U::PEDAL_ACCX_DES) <= 0.0) {
+        stopped_acc_des_ = delayed_input(IDX_U::PEDAL_ACCX_DES);
+        start_hold_elapsed_ = 0.0;
+        holding = true;
+      } else if (start_hold_elapsed_ < hold) {
+        start_hold_elapsed_ += dt;
+        delayed_input(IDX_U::PEDAL_ACCX_DES) = stopped_acc_des_;
+        holding = true;
+        if (start_hold_elapsed_ >= hold) {
+          ++starts_held_;
+        }
+      }
+    } else {
+      start_hold_elapsed_ = 0.0;
+    }
+  }
   steer_input_queue_.push_back(input_(IDX_U::STEER_DES));
   delayed_input(IDX_U::STEER_DES) = steer_input_queue_.front();
   steer_input_queue_.pop_front();
@@ -120,8 +147,40 @@ void SimModelDelaySteerAccGearedForDiffusionPlanner::update(const double & dt)
     -state_(IDX::PEDAL_ACCX) >= std::abs(delayed_input(IDX_U::SLOPE_ACCX))) {
     state_(IDX::VX) = 0.0;
   }
+  if (holding) {
+    state_(IDX::X) = prev_state(IDX::X);
+    state_(IDX::Y) = prev_state(IDX::Y);
+    state_(IDX::VX) = 0.0;
+  }
 
   state_(IDX::ACCX) = (state_(IDX::VX) - prev_state(IDX::VX)) / dt;
+
+  if (hasYawSteerLag()) {
+    const double tau = std::max(
+      yaw_steer_time_constant_ + yaw_steer_time_constant_per_speed_ * std::abs(prev_state(IDX::VX)),
+      MIN_TIME_CONSTANT);
+    const double a = std::exp(-dt / tau);
+    yaw_steer_ = a * yaw_steer_ + (1.0 - a) * state_(IDX::STEER);
+  }
+}
+
+void SimModelDelaySteerAccGearedForDiffusionPlanner::setStructure(
+  double yaw_steer_time_constant, double yaw_steer_time_constant_per_speed,
+  double course_lead_time, double steer_us_comp, double decel_scaling_factor,
+  double decel_time_constant)
+{
+  yaw_steer_time_constant_ = std::max(yaw_steer_time_constant, 0.0);
+  yaw_steer_time_constant_per_speed_ = std::max(yaw_steer_time_constant_per_speed, 0.0);
+  course_lead_time_ = course_lead_time;
+  steer_us_comp_ = steer_us_comp;
+  decel_scaling_factor_ = decel_scaling_factor;
+  decel_time_constant_ =
+    decel_time_constant < 0.0 ? -1.0 : std::max(decel_time_constant, MIN_TIME_CONSTANT);
+}
+
+void SimModelDelaySteerAccGearedForDiffusionPlanner::syncYawSteer()
+{
+  yaw_steer_ = state_(IDX::STEER);
 }
 
 void SimModelDelaySteerAccGearedForDiffusionPlanner::initializeInputQueue(const double & dt)
@@ -156,6 +215,18 @@ void SimModelDelaySteerAccGearedForDiffusionPlanner::resetStateQueues()
   // the warm-up transient the substep loop would otherwise have pushed.
   std::fill(steer_state_queue_.begin(), steer_state_queue_.end(), state_(IDX::STEER));
   std::fill(pedal_state_queue_.begin(), pedal_state_queue_.end(), state_(IDX::PEDAL_ACCX));
+  yaw_steer_ = state_(IDX::STEER);
+}
+
+void SimModelDelaySteerAccGearedForDiffusionPlanner::holdSteer(const double steer)
+{
+  // `steer` is a reported angle; the state is the actuator angle behind it.
+  const double actuator = steer * usRatio(state_(IDX::VX));
+  state_(IDX::STEER) = actuator;
+  std::fill(steer_input_queue_.begin(), steer_input_queue_.end(), steer);
+  std::fill(steer_state_queue_.begin(), steer_state_queue_.end(), actuator);
+  delayed_steer_state_ = actuator;
+  yaw_steer_ = actuator;
 }
 
 void SimModelDelaySteerAccGearedForDiffusionPlanner::setInputQueues(
@@ -191,18 +262,26 @@ Eigen::VectorXd SimModelDelaySteerAccGearedForDiffusionPlanner::calcModel(
   // the corresponding delay is 0.
   const double pedal_acc_delayed = sat(delayed_pedal_state_, vx_rate_lim_, -vx_rate_lim_);
   const double steer_delayed = delayed_steer_state_;
+  // Drive and brake reach the wheels through different actuators, so a decelerating command can
+  // have its own gain and time constant.
+  const double pedal_acc_cmd = sat(input(IDX_U::PEDAL_ACCX_DES), vx_rate_lim_, -vx_rate_lim_);
+  const bool decel = pedal_acc_cmd < 0.0;
   const double pedal_acc_des =
-    sat(input(IDX_U::PEDAL_ACCX_DES), vx_rate_lim_, -vx_rate_lim_) * debug_acc_scaling_factor_;
-  const double steer_des =
-    sat(input(IDX_U::STEER_DES), steer_lim_, -steer_lim_) * debug_steer_scaling_factor_;
+    pedal_acc_cmd *
+    (decel && decel_scaling_factor_ >= 0.0 ? decel_scaling_factor_ : debug_acc_scaling_factor_);
+  // The vehicle interface scales the tire-angle command by the understeer ratio before the
+  // actuator (forward motion only), so the steer state tracks the scaled target.
+  const double steer_des = sat(input(IDX_U::STEER_DES), steer_lim_, -steer_lim_) *
+                           debug_steer_scaling_factor_ * usRatio(vel);
 
   // Yaw rate (with k_us understeer and steer-bias β); un-delayed (yaw observation delay d_tt is out
   // of scope for this derivative and left for a future improvement).
-  const double yaw_rate = calc_yaw_rate(vel, steer);
+  const double yaw_rate = calc_yaw_rate(vel, hasYawSteerLag() ? yaw_steer_ : steer);
   // Acceleration target: the actuator (PEDAL_ACCX) tracks the desired accel with a single-tau
   // first-order lag (same form as wo_fall_guard).
   const double pedal_acc_target = pedal_acc_des;
-  const double acc_tau = acc_time_constant_;
+  const double acc_tau =
+    decel && decel_time_constant_ > 0.0 ? decel_time_constant_ : acc_time_constant_;
   // NOTE: `steer_des` is calculated by control from measured values, delayed by the command queue.
   // full-RHS delay: the measured steer that closes the tracking loop is also taken at t-steer_delay
   // (delayed_steer_state_), not the current steer, so the steer channel's whole RHS lags together.
@@ -221,8 +300,14 @@ Eigen::VectorXd SimModelDelaySteerAccGearedForDiffusionPlanner::calcModel(
 
   Eigen::VectorXd d_state = Eigen::VectorXd::Zero(dim_x_);
 
-  d_state(IDX::X) = vel * cos(yaw - xy_heading_rate_coeff_ * vel * yaw_rate);
-  d_state(IDX::Y) = vel * sin(yaw - xy_heading_rate_coeff_ * vel * yaw_rate);
+  // While the yaw lags the steer state, the travel direction leads the yaw; the lead fades as the
+  // lagged tire angle catches up.
+  const double course = yaw - xy_heading_rate_coeff_ * vel * yaw_rate +
+                        (hasYawSteerLag() && course_lead_time_ != 0.0
+                           ? course_lead_time_ * (calc_yaw_rate(vel, steer) - yaw_rate)
+                           : 0.0);
+  d_state(IDX::X) = vel * cos(course);
+  d_state(IDX::Y) = vel * sin(course);
   d_state(IDX::YAW) = yaw_rate;
   d_state(IDX::VX) = [&] {
     if (pedal_acc >= 0.0) {

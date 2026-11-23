@@ -17,6 +17,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/LU>
+#include <algorithm>
 #include <deque>
 #include <iostream>
 #include <queue>
@@ -100,10 +101,50 @@ public:
   void resetStateQueues();
 
   /**
+   * @brief fill the steer command queue and the delayed steer history with `steer`, so that a
+   *        steer seeded from outside is neither pulled toward a stale command nor read back late.
+   */
+  void holdSteer(double steer);
+
+  /**
    * @brief sizes of the internal delay queues (driven by acc_delay / steer_delay / dt).
    */
   int getAccQueueSize() const;
   int getSteerQueueSize() const;
+
+  /**
+   * @brief time the vehicle stays held after the delayed accel command turns positive while it is
+   *        stopped (brake release before it starts to move). 0 keeps the command as is.
+   */
+  void setStartDeadTime(const double start_dead_time) { start_dead_time_ = std::max(start_dead_time, 0.0); }
+  void setFirstStartDeadTime(const double first_start_dead_time)
+  {
+    first_start_dead_time_ = std::max(first_start_dead_time, 0.0);
+  }
+
+  /**
+   * @brief structure terms beyond the base model; the defaults (all 0, decel = accel) keep it.
+   * @param [in] yaw_steer_time_constant lag from the steer state to the tire angle that drives yaw [s]
+   * @param [in] yaw_steer_time_constant_per_speed growth of that lag with |vx| [s/(m/s)]
+   * @param [in] course_lead_time the travel direction leads yaw by this times the yaw rate the
+   *             un-lagged steer state would give minus the actual one [s]
+   * @param [in] steer_us_comp understeer compensation the vehicle interface applies to the steer
+   *             command, (1 + steer_us_comp · vx² / L); the steer state is then the actuator angle
+   *             and the reported steer is that angle divided back by the ratio, as the interface
+   *             republishes it
+   * @param [in] decel_scaling_factor scaling of a negative accel command (< 0: as accel)
+   * @param [in] decel_time_constant accel time constant for a negative command (< 0: as accel)
+   */
+  void setStructure(
+    double yaw_steer_time_constant, double yaw_steer_time_constant_per_speed,
+    double course_lead_time, double steer_us_comp, double decel_scaling_factor,
+    double decel_time_constant);
+
+  /**
+   * @brief make the tire angle that drives yaw follow the current steer state (after the state is
+   *        set from outside).
+   */
+  void syncYawSteer();
 
 private:
   const double MIN_TIME_CONSTANT;  //!< @brief minimum time constant
@@ -145,6 +186,27 @@ private:
   const double k_us_;                        //!< @brief understeer coefficient [rad/(m/s²)]
   const double xy_heading_rate_coeff_;       //!< @brief xy heading rate coefficient
   const bool use_rk4_;                       //!< @brief whether to use Runge-Kutta integration
+  double start_dead_time_ = 0.0;             //!< @brief hold after a start command at standstill [s]
+  double first_start_dead_time_ = 0.0;       //!< @brief hold of the first start, when longer [s]
+  int starts_held_ = 0;                      //!< @brief starts whose hold has run out
+  double start_hold_elapsed_ = 0.0;          //!< @brief time held since the start command [s]
+  double stopped_acc_des_ = 0.0;             //!< @brief last non-positive accel command at standstill
+  double yaw_steer_time_constant_ = 0.0;     //!< @brief steer-to-yaw lag at standstill [s]
+  double yaw_steer_time_constant_per_speed_ = 0.0;  //!< @brief its growth with |vx| [s/(m/s)]
+  double course_lead_time_ = 0.0;            //!< @brief travel direction lead over yaw [s]
+  double steer_us_comp_ = 0.0;               //!< @brief understeer compensation on the command
+  double decel_scaling_factor_ = -1.0;       //!< @brief negative-command scaling (< 0: as accel)
+  double decel_time_constant_ = -1.0;        //!< @brief negative-command time constant (< 0: as accel)
+  double yaw_steer_ = 0.0;                   //!< @brief tire angle that drives yaw (lagged steer)
+
+  bool hasYawSteerLag() const
+  {
+    return yaw_steer_time_constant_ > 0.0 || yaw_steer_time_constant_per_speed_ > 0.0;
+  }
+  double usRatio(double vel) const
+  {
+    return vel > 0.0 ? 1.0 + steer_us_comp_ * vel * vel / wheelbase_ : 1.0;
+  }
 
   /**
    * @brief steady-state yaw rate including understeer (k_us) and steer bias.

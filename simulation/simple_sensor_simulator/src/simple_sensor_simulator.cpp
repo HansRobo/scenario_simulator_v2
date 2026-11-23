@@ -57,6 +57,8 @@ ScenarioSimulator::ScenarioSimulator(const rclcpp::NodeOptions & options)
     PerceptionReproducerSensor::ReplayConfig replay_config;
     replay_config.use_position_based_replay = common::getParameter<bool>(
       get_node_parameters_interface(), "replay_use_position_based", false);
+    replay_config.filter_signals_to_driven_lanes = common::getParameter<bool>(
+      get_node_parameters_interface(), "replay_filter_signals_to_driven_lanes", true);
     sensor_sim_.attachPerceptionReproducerSensor(
       replay_bag_path, replay_start_time, replay_config, *this);
     sensor_sim_.setSuppressDetectionSensor(true);
@@ -224,6 +226,14 @@ auto ScenarioSimulator::spawnVehicleEntity(
       get_parameter_or("use_sim_time", rclcpp::Parameter("use_sim_time", false)),
       common::getParameter<bool>(
         get_node_parameters_interface(), "consider_acceleration_by_road_slope", false));
+    if (const auto replay_bag_path = common::getParameter<std::string>(
+          get_node_parameters_interface(), "replay_bag_path", "");
+        not replay_bag_path.empty() and
+        common::getParameter<bool>(get_node_parameters_interface(), "replay_ego_steering", false)) {
+      ego_entity_simulation_->setReplaySteering(
+        replay_bag_path,
+        common::getParameter<double>(get_node_parameters_interface(), "replay_start_time", 0.0));
+    }
   } else {
     vehicles_.emplace_back(req.parameters());
   }

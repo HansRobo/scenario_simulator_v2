@@ -104,6 +104,8 @@ def launch_setup(context, *args, **kwargs):
     post_process_timeout                        = LaunchConfiguration("post_process_timeout",                        default=60)
     replay_bag_path                             = LaunchConfiguration("replay_bag_path",                             default="")
     replay_ego_duration                         = LaunchConfiguration("replay_ego_duration",                         default=0.0)
+    replay_ego_steering                         = LaunchConfiguration("simple_sensor_simulator.replay_ego_steering")
+    replay_filter_signals_to_driven_lanes       = LaunchConfiguration("simple_sensor_simulator.replay_filter_signals_to_driven_lanes")
     replay_start_time                           = LaunchConfiguration("replay_start_time",                           default=0.0)
     rviz_config                                 = LaunchConfiguration("rviz_config",                                 default=default_rviz_config_file())
     scenario                                    = LaunchConfiguration("scenario",                                    default=Path("/dev/null"))
@@ -377,6 +379,8 @@ def launch_setup(context, *args, **kwargs):
             parameters += [
                 {"replay_bag_path": bag_path},
                 {"replay_ego_duration": replay_ego_duration},
+                {"replay_ego_steering": replay_ego_steering},
+                {"replay_filter_signals_to_driven_lanes": replay_filter_signals_to_driven_lanes},
                 {"replay_start_time": replay_start_time},
             ]
 
@@ -610,4 +614,18 @@ def launch_setup(context, *args, **kwargs):
 
 
 def generate_launch_description():
-    return LaunchDescription([OpaqueFunction(function=launch_setup)])
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument(
+                "simple_sensor_simulator.replay_ego_steering",
+                default_value="false",
+                description="Seed the ego steering from the recorded tire angle during bag replay.",
+            ),
+            DeclareLaunchArgument(
+                "simple_sensor_simulator.replay_filter_signals_to_driven_lanes",
+                default_value="true",
+                description="Replay only traffic lights governing the lanes driven by the recorded ego.",
+            ),
+            OpaqueFunction(function=launch_setup),
+        ]
+    )

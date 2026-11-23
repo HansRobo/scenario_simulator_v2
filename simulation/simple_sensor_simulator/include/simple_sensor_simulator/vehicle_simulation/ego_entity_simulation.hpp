@@ -15,6 +15,7 @@
 #ifndef TRAFFIC_SIMULATOR__VEHICLE_SIMULATION__EGO_ENTITY_SIMULATION_HPP_
 #define TRAFFIC_SIMULATOR__VEHICLE_SIMULATION__EGO_ENTITY_SIMULATION_HPP_
 
+#include <cstdint>
 #include <concealer/autoware_universe.hpp>
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
 #include <memory>
@@ -27,6 +28,8 @@
 #include <traffic_simulator_msgs/msg/entity_status.hpp>
 #include <traffic_simulator_msgs/msg/polyline_trajectory.hpp>
 #include <traffic_simulator_msgs/msg/vehicle_parameters.hpp>
+#include <utility>
+#include <vector>
 
 namespace vehicle_simulation
 {
@@ -58,6 +61,11 @@ private:
   const std::shared_ptr<SimModelInterface> vehicle_model_ptr_;
 
   std::optional<double> previous_linear_velocity_, previous_angular_velocity_;
+
+  /// Recorded tire angle of the replayed ego on the scenario time base [ns, rad], sorted by time.
+  std::vector<std::pair<int64_t, double>> replay_steering_;
+
+  auto replaySteeringAt(double scenario_time) const -> std::optional<double>;
 
   traffic_simulator::CanonicalizedEntityStatus status_;
 
@@ -125,6 +133,11 @@ public:
     const traffic_simulator_msgs::msg::EntityStatus &,
     const traffic_simulator_msgs::msg::VehicleParameters &, double,
     const rclcpp::Parameter & use_sim_time, const bool consider_acceleration_by_road_slope);
+
+  /// While the ego is replayed, seed the steer state with the tire angle recorded in the bag
+  /// (/vehicle/status/steering_status) instead of the one implied by the yaw rate, which is
+  /// undefined at a standstill. Same time base as EgoBagReplayer.
+  auto setReplaySteering(const std::string & bag_path, double replay_start_time) -> void;
 
   auto overwrite(
     const traffic_simulator_msgs::msg::EntityStatus & status, const double current_time,

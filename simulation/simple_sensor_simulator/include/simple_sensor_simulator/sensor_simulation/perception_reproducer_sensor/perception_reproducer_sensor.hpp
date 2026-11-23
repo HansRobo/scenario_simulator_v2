@@ -111,6 +111,9 @@ public:
   {
     // Use position-based data selection instead of time-sequential replay
     bool use_position_based_replay = false;
+    /// Keep only the signal groups governing the lanelets the recorded ego drove on. Off replays
+    /// every group as recorded, which is what the vehicle's planner was given.
+    bool filter_signals_to_driven_lanes = true;
   };
 
   PerceptionReproducerSensor(
